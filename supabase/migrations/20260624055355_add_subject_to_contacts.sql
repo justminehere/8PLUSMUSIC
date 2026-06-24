@@ -1,0 +1,1 @@
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS subject text NOT NULL DEFAULT 'General';
