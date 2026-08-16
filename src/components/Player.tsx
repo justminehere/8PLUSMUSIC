@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { X, Play, Pause } from 'lucide-react';
+import { X, Play, Pause, ChevronUp, ChevronDown } from 'lucide-react';
 import { usePlayer, closePlayer } from '../lib/playerStore';
 
 let apiPromise: Promise<void> | null = null;
@@ -32,6 +32,7 @@ export default function Player() {
   const playerRef = useRef<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [ready, setReady] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (!player.videoId) return;
@@ -45,6 +46,8 @@ export default function Player() {
       }
       playerRef.current = new window.YT.Player(containerRef.current, {
         videoId: player.videoId,
+        width: '100%',
+        height: '100%',
         playerVars: { autoplay: 1, controls: 1, modestbranding: 1, rel: 0 },
         events: {
           onReady: () => setReady(true),
@@ -70,12 +73,14 @@ export default function Player() {
       playerRef.current = null;
       setReady(false);
       setIsPlaying(false);
+      setExpanded(false);
     }
   }, [player.videoId]);
 
   if (!player.videoId) return null;
 
-  const togglePlay = () => {
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!playerRef.current || !ready) return;
     if (isPlaying) playerRef.current.pauseVideo();
     else playerRef.current.playVideo();
@@ -84,23 +89,30 @@ export default function Player() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50">
       <div
-        className="mx-auto mb-4 max-w-3xl rounded-2xl border backdrop-blur-xl shadow-2xl overflow-hidden"
+        className="mx-auto mb-4 max-w-3xl rounded-2xl border backdrop-blur-xl shadow-2xl overflow-hidden transition-all duration-300"
         style={{
-          background: 'rgba(10,10,10,0.92)',
+          background: 'rgba(10,10,10,0.94)',
           borderColor: `${player.coverColor}40`,
           boxShadow: `0 -8px 40px ${player.coverColor}30, 0 8px 32px rgba(0,0,0,0.6)`,
         }}
       >
-        <div className="flex items-center gap-3 p-3">
-          {/* Hidden iframe host; we show cover + custom controls */}
-          <div className="sr-only">
-            <div ref={containerRef} />
+        {/* Video area — visible so audio plays. Collapses to a thin strip when not expanded. */}
+        <div
+          className="relative w-full bg-black transition-all duration-300 overflow-hidden"
+          style={{ height: expanded ? 220 : 0 }}
+        >
+          <div className="w-full h-full">
+            <div ref={containerRef} className="w-full h-full" />
           </div>
+        </div>
 
+        <div className="flex items-center gap-3 p-3">
           {/* Cover thumbnail */}
           <div
-            className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border"
+            className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border cursor-pointer"
             style={{ borderColor: `${player.coverColor}40` }}
+            onClick={() => setExpanded(v => !v)}
+            title={expanded ? 'Collapse video' : 'Expand video'}
           >
             {player.coverUrl ? (
               <img src={player.coverUrl} alt="" className="w-full h-full object-cover" />
@@ -112,13 +124,23 @@ export default function Player() {
             )}
           </div>
 
-          {/* Title + equalizer */}
-          <div className="flex-1 min-w-0">
+          {/* Title */}
+          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpanded(v => !v)}>
             <p className="text-[10px] tracking-[0.25em] uppercase" style={{ color: player.coverColor }}>
               Now Playing
             </p>
             <p className="text-sm font-medium text-white truncate">{player.title}</p>
           </div>
+
+          {/* Expand/collapse */}
+          <button
+            onClick={() => setExpanded(v => !v)}
+            className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
+            style={{ background: 'rgba(255,255,255,0.05)' }}
+            aria-label={expanded ? 'Collapse video' : 'Expand video'}
+          >
+            {expanded ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+          </button>
 
           {/* Play/Pause */}
           <button
@@ -141,9 +163,9 @@ export default function Player() {
           </button>
         </div>
 
-        {/* Progress-ish EQ bar */}
+        {/* Progress bar */}
         {isPlaying && (
-          <div className="h-0.5 w-full" style={{ background: player.coverColor, opacity: 0.6 }} />
+          <div className="h-0.5 w-full animate-pulse" style={{ background: player.coverColor, opacity: 0.6 }} />
         )}
       </div>
     </div>
