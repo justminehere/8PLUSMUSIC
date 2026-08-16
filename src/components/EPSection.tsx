@@ -1,7 +1,18 @@
 import { useRef, useEffect, useState } from 'react';
 import { Play, Music } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { playTrack } from '../lib/playerStore';
+
+function openTrackPopup(url: string) {
+  const w = 480;
+  const h = 720;
+  const left = window.screen.width - w - 24;
+  const top = 80;
+  window.open(
+    url,
+    'track_player',
+    `popup=yes,width=${w},height=${h},left=${left},top=${top}`
+  );
+}
 
 interface Track {
   title: string;
@@ -113,12 +124,7 @@ export default function EPSection({ title, coverColor, coverAccent, tracks, imag
                 coverColor={coverColor}
                 epCoverUrl={imageUrl}
                 itunesUrl={links[track.title]}
-                onPlay={track.url ? () => playTrack({
-                  url: track.url!,
-                  title: track.title,
-                  coverUrl: track.coverUrl ?? imageUrl,
-                  coverColor,
-                }) : undefined}
+                onPlay={track.url ? () => openTrackPopup(track.url!) : undefined}
               />
             ))}
           </div>
