@@ -2,6 +2,7 @@ export interface Track {
   title: string;
   duration?: string;
   coverUrl?: string;
+  url?: string;
 }
 
 export interface EP {
@@ -27,7 +28,7 @@ export const EPS: EP[] = [
       { title: 'Lullaby' },
       { title: 'Reggae Song' },
       { title: 'Jazz Song' },
-      { title: 'Little Longer One' },
+      { title: 'Little Longer One', url: 'https://music.youtube.com/watch?v=TqH1G6M4k0I' },
     ],
   },
   {

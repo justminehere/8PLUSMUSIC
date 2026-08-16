@@ -8,6 +8,7 @@ import Sponsors from './components/Sponsors';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
 import Chat from './components/Chat';
+import Player from './components/Player';
 import AdminDashboard from './components/AdminDashboard';
 import PrivacyBanner from './components/PrivacyBanner';
 import PrivacyPolicy from './components/PrivacyPolicy';
@@ -59,6 +60,7 @@ export default function App() {
       <section id="contact"><Contact /></section>
       <Footer />
       <Chat />
+      <Player />
       <PrivacyBanner onOpenPolicy={() => setPolicyOpen(true)} />
       {policyOpen && <PrivacyPolicy onClose={() => setPolicyOpen(false)} />}
     </div>

@@ -1,11 +1,13 @@
 import { useRef, useEffect, useState } from 'react';
 import { Play, Music } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { playTrack } from '../lib/playerStore';
 
 interface Track {
   title: string;
   duration?: string;
   coverUrl?: string;
+  url?: string;
 }
 
 interface EPSectionProps {
@@ -111,6 +113,12 @@ export default function EPSection({ title, coverColor, coverAccent, tracks, imag
                 coverColor={coverColor}
                 epCoverUrl={imageUrl}
                 itunesUrl={links[track.title]}
+                onPlay={track.url ? () => playTrack({
+                  url: track.url!,
+                  title: track.title,
+                  coverUrl: track.coverUrl ?? imageUrl,
+                  coverColor,
+                }) : undefined}
               />
             ))}
           </div>
@@ -133,12 +141,14 @@ function TrackRow({
   coverColor,
   epCoverUrl,
   itunesUrl,
+  onPlay,
 }: {
   track: Track;
   index: number;
   coverColor: string;
   epCoverUrl?: string;
   itunesUrl?: string;
+  onPlay?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -160,14 +170,16 @@ function TrackRow({
 
   const thumbSrc = track.coverUrl ?? epCoverUrl;
   const linked = !!itunesUrl;
+  const playable = !!onPlay;
+  const active = linked || playable;
 
   const inner = (
     <div
       ref={ref}
       className={`track-row group flex items-center gap-3 py-2.5 px-3 rounded-xl transition-all duration-200 ${
-        linked ? 'cursor-pointer hover:translate-x-1.5' : 'cursor-default opacity-60'
+        active ? 'cursor-pointer hover:translate-x-1.5' : 'cursor-default opacity-60'
       }`}
-      style={{ background: linked ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)' }}
+      style={{ background: active ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)' }}
     >
       {/* Track number */}
       <span className="text-xs w-5 text-center font-mono flex-shrink-0" style={{ color: coverColor, opacity: 0.55 }}>
@@ -183,7 +195,7 @@ function TrackRow({
           <img
             src={thumbSrc}
             alt=""
-            className={`w-full h-full object-cover transition-opacity ${linked ? 'opacity-80 group-hover:opacity-100' : 'opacity-40'}`}
+            className={`w-full h-full object-cover transition-opacity ${active ? 'opacity-80 group-hover:opacity-100' : 'opacity-40'}`}
           />
         ) : (
           <div
@@ -195,27 +207,27 @@ function TrackRow({
         )}
       </div>
 
-      {/* Play icon on hover (only when linked) */}
-      {linked && (
+      {/* Play icon on hover (when playable or linked) */}
+      {active && (
         <Play size={13} className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ color: coverColor }} />
       )}
 
       {/* Title */}
       <span
         className={`font-medium tracking-wide flex-1 text-sm truncate transition-colors ${
-          linked ? 'text-zinc-300 group-hover:text-white' : 'text-zinc-600'
+          active ? 'text-zinc-300 group-hover:text-white' : 'text-zinc-600'
         }`}
       >
         {track.title}
       </span>
 
-      {/* iTunes badge when linked */}
-      {linked && (
+      {/* Badge when linked or playable */}
+      {active && (
         <span
           className="flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full opacity-60 group-hover:opacity-100 transition-opacity"
           style={{ background: `${coverColor}22`, color: coverColor, border: `1px solid ${coverColor}40` }}
         >
-          iTunes
+          {playable ? 'Play' : 'iTunes'}
         </span>
       )}
 
@@ -229,6 +241,14 @@ function TrackRow({
       <a href={itunesUrl} target="_blank" rel="noopener noreferrer" className="block">
         {inner}
       </a>
+    );
+  }
+
+  if (playable) {
+    return (
+      <button type="button" onClick={onPlay} className="block w-full text-left">
+        {inner}
+      </button>
     );
   }
 
