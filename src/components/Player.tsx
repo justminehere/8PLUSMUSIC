@@ -1,118 +1,53 @@
-import { useRef, useEffect, useState } from 'react';
-import { X, Play, Pause, ChevronUp, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { X, Play, ChevronUp, ChevronDown } from 'lucide-react';
 import { usePlayer, closePlayer } from '../lib/playerStore';
-
-let apiPromise: Promise<void> | null = null;
-function loadYouTubeAPI(): Promise<void> {
-  if (apiPromise) return apiPromise;
-  apiPromise = new Promise<void>(resolve => {
-    if (window.YT && window.YT.Player) {
-      resolve();
-      return;
-    }
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    const first = document.getElementsByTagName('script')[0];
-    first.parentNode?.insertBefore(tag, first);
-    (window as any).onYouTubeIframeAPIReady = () => resolve();
-  });
-  return apiPromise;
-}
-
-declare global {
-  interface Window {
-    YT?: any;
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
 
 export default function Player() {
   const player = usePlayer();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<any>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [ready, setReady] = useState(false);
   const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    if (!player.videoId) return;
-    let cancelled = false;
-
-    loadYouTubeAPI().then(() => {
-      if (cancelled || !containerRef.current) return;
-      if (playerRef.current) {
-        playerRef.current.loadVideoById(player.videoId);
-        return;
-      }
-      playerRef.current = new window.YT.Player(containerRef.current, {
-        videoId: player.videoId,
-        width: '100%',
-        height: '100%',
-        playerVars: { autoplay: 1, controls: 1, modestbranding: 1, rel: 0 },
-        events: {
-          onReady: () => setReady(true),
-          onStateChange: (e: any) => {
-            setIsPlaying(e.data === window.YT.PlayerState.PLAYING);
-          },
-        },
-      });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [player.videoId]);
-
-  useEffect(() => {
-    if (!player.videoId && playerRef.current) {
-      try {
-        playerRef.current.destroy();
-      } catch {
-        // ignore
-      }
-      playerRef.current = null;
-      setReady(false);
-      setIsPlaying(false);
-      setExpanded(false);
-    }
-  }, [player.videoId]);
 
   if (!player.videoId) return null;
 
-  const togglePlay = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!playerRef.current || !ready) return;
-    if (isPlaying) playerRef.current.pauseVideo();
-    else playerRef.current.playVideo();
-  };
+  const embedSrc = `https://www.youtube.com/embed/${player.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1`;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50">
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-3">
       <div
         className="mx-auto mb-4 max-w-3xl rounded-2xl border backdrop-blur-xl shadow-2xl overflow-hidden transition-all duration-300"
         style={{
-          background: 'rgba(10,10,10,0.94)',
+          background: 'rgba(10,10,10,0.95)',
           borderColor: `${player.coverColor}40`,
           boxShadow: `0 -8px 40px ${player.coverColor}30, 0 8px 32px rgba(0,0,0,0.6)`,
         }}
       >
-        {/* Video area — visible so audio plays. Collapses to a thin strip when not expanded. */}
+        {/* Always-visible iframe so autoplay + audio work.
+            Collapsed: small 16:9 thumbnail-size player. Expanded: full-width. */}
         <div
-          className="relative w-full bg-black transition-all duration-300 overflow-hidden"
-          style={{ height: expanded ? 220 : 0 }}
+          className="relative w-full bg-black overflow-hidden transition-all duration-300 mx-auto"
+          style={{
+            aspectRatio: '16 / 9',
+            width: expanded ? '100%' : 96,
+            height: expanded ? 'auto' : 54,
+          }}
         >
-          <div className="w-full h-full">
-            <div ref={containerRef} className="w-full h-full" />
-          </div>
+          <iframe
+            key={player.videoId}
+            src={embedSrc}
+            title={player.title}
+            className="w-full h-full"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            frameBorder="0"
+          />
         </div>
 
         <div className="flex items-center gap-3 p-3">
           {/* Cover thumbnail */}
           <div
-            className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border cursor-pointer"
-            style={{ borderColor: `${player.coverColor}40` }}
+            className="flex-shrink-0 rounded-lg overflow-hidden border cursor-pointer relative"
+            style={{ borderColor: `${player.coverColor}40`, width: 44, height: 44 }}
             onClick={() => setExpanded(v => !v)}
-            title={expanded ? 'Collapse video' : 'Expand video'}
+            title={expanded ? 'Collapse video' : 'Show video'}
           >
             {player.coverUrl ? (
               <img src={player.coverUrl} alt="" className="w-full h-full object-cover" />
@@ -122,6 +57,9 @@ export default function Player() {
                 style={{ background: `linear-gradient(135deg, ${player.coverColor}40, #1a1a1a)` }}
               />
             )}
+            <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.25)' }}>
+              <Play size={14} style={{ color: player.coverColor }} className="ml-0.5" />
+            </div>
           </div>
 
           {/* Title */}
@@ -132,24 +70,20 @@ export default function Player() {
             <p className="text-sm font-medium text-white truncate">{player.title}</p>
           </div>
 
+          {/* Live indicator */}
+          <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
+            <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ background: player.coverColor }} />
+            <span className="text-[10px] uppercase tracking-widest text-zinc-500">Live</span>
+          </div>
+
           {/* Expand/collapse */}
           <button
             onClick={() => setExpanded(v => !v)}
             className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
             style={{ background: 'rgba(255,255,255,0.05)' }}
-            aria-label={expanded ? 'Collapse video' : 'Expand video'}
+            aria-label={expanded ? 'Collapse video' : 'Show video'}
           >
             {expanded ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-          </button>
-
-          {/* Play/Pause */}
-          <button
-            onClick={togglePlay}
-            className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-            style={{ background: `${player.coverColor}22`, border: `1px solid ${player.coverColor}55`, color: player.coverColor }}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
           </button>
 
           {/* Close */}
@@ -162,11 +96,6 @@ export default function Player() {
             <X size={16} />
           </button>
         </div>
-
-        {/* Progress bar */}
-        {isPlaying && (
-          <div className="h-0.5 w-full animate-pulse" style={{ background: player.coverColor, opacity: 0.6 }} />
-        )}
       </div>
     </div>
   );
