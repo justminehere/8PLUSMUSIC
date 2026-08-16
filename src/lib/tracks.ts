@@ -25,7 +25,7 @@ export const EPS: EP[] = [
       { title: 'Song 1' },
       { title: 'Song 2' },
       { title: 'R&B Song' },
-      { title: 'Lullaby' },
+      { title: 'Lullaby', url: 'https://www.youtube.com/watch?v=Is88ir6o8VA' },
       { title: 'Reggae Song' },
       { title: 'Jazz Song' },
       { title: 'Little Longer One', url: 'https://music.youtube.com/watch?v=TqH1G6M4k0I' },
