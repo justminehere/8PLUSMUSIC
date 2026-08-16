@@ -40,16 +40,21 @@ export default function EPSection({ title, coverColor, coverAccent, tracks, imag
   const [links, setLinks] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    supabase
-      .from('track_links')
-      .select('track_title, itunes_url')
-      .eq('ep', title)
-      .then(({ data }) => {
-        if (!data) return;
-        const map: Record<string, string> = {};
-        (data as TrackLink[]).forEach(l => { map[l.track_title] = l.itunes_url; });
-        setLinks(map);
-      });
+    try {
+      supabase
+        .from('track_links')
+        .select('track_title, itunes_url')
+        .eq('ep', title)
+        .then(({ data }) => {
+          if (!data) return;
+          const map: Record<string, string> = {};
+          (data as TrackLink[]).forEach(l => { map[l.track_title] = l.itunes_url; });
+          setLinks(map);
+        })
+        .catch(() => {});
+    } catch {
+      // Supabase not configured — tracks still render without iTunes links
+    }
   }, [title]);
 
   useEffect(() => {
