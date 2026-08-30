@@ -26,7 +26,7 @@ export default function App() {
     return <AdminDashboard />;
   }
 
-  const [dachshund, bunny] = EPS;
+  const [dachshundEp1, dachshundEp2, bunny] = EPS;
 
   return (
     <div className="min-h-screen bg-black">
@@ -34,11 +34,22 @@ export default function App() {
 
       <section id="releases">
         <EPSection
-          title={dachshund.label}
-          coverColor={dachshund.coverColor}
-          coverAccent={dachshund.coverAccent}
-          tracks={dachshund.tracks}
-          imageUrl={dachshund.imageUrl}
+          title={dachshundEp1.label}
+          coverColor={dachshundEp1.coverColor}
+          coverAccent={dachshundEp1.coverAccent}
+          tracks={dachshundEp1.tracks}
+          imageUrl={dachshundEp1.imageUrl}
+        />
+
+        <div className="h-px bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+
+        <EPSection
+          title={dachshundEp2.label}
+          coverColor={dachshundEp2.coverColor}
+          coverAccent={dachshundEp2.coverAccent}
+          tracks={dachshundEp2.tracks}
+          imageUrl={dachshundEp2.imageUrl}
+          reverse
         />
 
         <div className="h-px bg-gradient-to-r from-transparent via-white/5 to-transparent" />
@@ -49,7 +60,6 @@ export default function App() {
           coverAccent={bunny.coverAccent}
           tracks={bunny.tracks}
           imageUrl={bunny.imageUrl}
-          reverse
         />
       </section>
 

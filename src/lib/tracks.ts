@@ -17,7 +17,7 @@ export interface EP {
 export const EPS: EP[] = [
   {
     id: 'dachshund.land',
-    label: 'dachshund.land',
+    label: 'dachshund.land EP 1',
     coverColor: '#ec4899',
     coverAccent: '#2dd4bf',
     imageUrl: '/dachshu8ndecover.png',
@@ -29,6 +29,20 @@ export const EPS: EP[] = [
       { title: 'Music loves me back', url: 'https://www.youtube.com/watch?v=ZH6OhwhbAgA' },
       { title: 'Reggae in my Paws', url: 'https://www.youtube.com/watch?v=NkU0yMjYTEE' },
       { title: 'Jazz in my Heart', url: 'https://www.youtube.com/watch?v=-M3Qb-vuSno' },
+    ],
+  },
+  {
+    id: 'dachshund.land-ep-2',
+    label: 'dachshund.land EP 2',
+    coverColor: '#f59e0b',
+    coverAccent: '#f5f5f4',
+    imageUrl: '/ChatGPT_Image_Aug_29,_2026,_06_13_53_PM.png',
+    tracks: [
+      { title: 'Date Nights' },
+      { title: 'Littlelongerone out in the streets' },
+      { title: 'Night out of town' },
+      { title: 'RAP music around the fire' },
+      { title: 'The crew' },
     ],
   },
   {

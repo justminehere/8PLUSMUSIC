@@ -134,12 +134,6 @@ export default function EPSection({ title, coverColor, coverAccent, tracks, imag
             ))}
           </div>
 
-          <div
-            className="mt-6 inline-flex items-center gap-2 text-xs tracking-widest uppercase px-5 py-2 rounded-full border"
-            style={{ borderColor: `${coverColor}40`, color: coverColor }}
-          >
-            <span>Coming Soon</span>
-          </div>
         </div>
       </div>
     </section>
