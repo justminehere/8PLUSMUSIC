@@ -23,7 +23,7 @@ export const EPS: EP[] = [
     imageUrl: '/dachshu8ndecover.png',
     tracks: [
       { title: 'Lullaby', url: 'https://www.youtube.com/watch?v=Is88ir6o8VA' },
-      { title: 'Song 2' },
+      { title: 'My little longer Sister', url: 'https://www.youtube.com/watch?v=sl_wz25NQEY' },
       { title: 'R&B Song' },
       { title: 'Lullaby (Reprise)' },
       { title: 'Reggae Song' },
