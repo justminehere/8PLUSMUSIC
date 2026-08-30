@@ -86,13 +86,8 @@ body {
 }
 
 .track-row {
-  opacity: 0;
-  transform: translateX(16px);
-  transition: opacity 0.4s ease-out, transform 0.4s ease-out,
-              background-color 0.2s, color 0.2s;
-}
-
-.track-row.track-visible {
   opacity: 1;
   transform: translateX(0);
+  transition: opacity 0.4s ease-out, transform 0.4s ease-out,
+              background-color 0.2s, color 0.2s;
 }
