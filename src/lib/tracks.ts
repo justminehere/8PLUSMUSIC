@@ -26,7 +26,7 @@ export const EPS: EP[] = [
       { title: 'Lullaby', url: 'https://www.youtube.com/watch?v=Is88ir6o8VA' },
       { title: 'My little longer Sister', url: 'https://www.youtube.com/watch?v=sl_wz25NQEY' },
       { title: 'I FOUND THE BEAT', url: 'https://www.youtube.com/watch?v=t_J8UanEFMs' },
-      { title: 'Lullaby (Reprise)' },
+      { title: 'Music loves me back', url: 'https://www.youtube.com/watch?v=ZH6OhwhbAgA' },
       { title: 'Reggae in my Paws', url: 'https://www.youtube.com/watch?v=NkU0yMjYTEE' },
       { title: 'Jazz in my Heart', url: 'https://www.youtube.com/watch?v=-M3Qb-vuSno' },
     ],
