@@ -24,7 +24,7 @@ export const EPS: EP[] = [
     tracks: [
       { title: 'Lullaby', url: 'https://www.youtube.com/watch?v=Is88ir6o8VA' },
       { title: 'My little longer Sister', url: 'https://www.youtube.com/watch?v=sl_wz25NQEY' },
-      { title: 'R&B Song' },
+      { title: 'I FOUND THE BEAT', url: 'https://www.youtube.com/watch?v=t_J8UanEFMs' },
       { title: 'Lullaby (Reprise)' },
       { title: 'Reggae Song' },
       { title: 'Jazz in my Heart', url: 'https://www.youtube.com/watch?v=-M3Qb-vuSno' },
