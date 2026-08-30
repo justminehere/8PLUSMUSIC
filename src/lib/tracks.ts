@@ -22,13 +22,13 @@ export const EPS: EP[] = [
     coverAccent: '#2dd4bf',
     imageUrl: '/dachshu8ndecover.png',
     tracks: [
+      { title: 'Little Longer One' },
       { title: 'Lullaby', url: 'https://www.youtube.com/watch?v=Is88ir6o8VA' },
       { title: 'My little longer Sister', url: 'https://www.youtube.com/watch?v=sl_wz25NQEY' },
       { title: 'I FOUND THE BEAT', url: 'https://www.youtube.com/watch?v=t_J8UanEFMs' },
       { title: 'Lullaby (Reprise)' },
       { title: 'Reggae in my Paws', url: 'https://www.youtube.com/watch?v=NkU0yMjYTEE' },
       { title: 'Jazz in my Heart', url: 'https://www.youtube.com/watch?v=-M3Qb-vuSno' },
-      { title: 'Little Longer One' },
     ],
   },
   {
