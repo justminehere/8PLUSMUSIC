@@ -1,5 +1,11 @@
 import SoundWave from './SoundWave';
 
+const socials = [
+  { label: 'TIKTOK', href: 'https://www.tiktok.com/@8plusmusic?lang=en' },
+  { label: 'Instagram', href: 'https://www.instagram.com/8plusmusic/' },
+  { label: 'Youtube', href: 'https://www.youtube.com/channel/UCkmp1KlrwUYSxiHc9wFguvw' },
+];
+
 export default function Hero() {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-black px-6">
@@ -32,10 +38,26 @@ export default function Hero() {
         Music for the next cute universe.
       </p>
 
-      {/* Scroll hint */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 animate-fade-in" style={{ animationDelay: '1.5s' }}>
-        <span className="text-zinc-600 text-xs tracking-widest uppercase">Scroll</span>
-        <div className="w-px h-10 bg-gradient-to-b from-pink-500 to-transparent animate-bounce" />
+      {/* Scroll hint + socials */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4 animate-fade-in" style={{ animationDelay: '1.5s' }}>
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-zinc-600 text-xs tracking-widest uppercase">Scroll</span>
+          <div className="w-px h-10 bg-gradient-to-b from-pink-500 to-transparent animate-bounce" />
+        </div>
+        <h2 className="text-white text-sm md:text-base font-semibold tracking-[0.2em] uppercase">Our socials:</h2>
+        <div className="flex flex-wrap items-center justify-center gap-6">
+          {socials.map(s => (
+            <a
+              key={s.label}
+              href={s.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-pink-400 hover:text-teal-300 text-sm md:text-base font-medium tracking-widest uppercase transition-colors"
+            >
+              {s.label}
+            </a>
+          ))}
+        </div>
       </div>
     </section>
   );
