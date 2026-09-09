@@ -7,6 +7,7 @@ import Links from './components/Links';
 import Sponsors from './components/Sponsors';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
+import StickerCarousel from './components/StickerCarousel';
 import Chat from './components/Chat';
 import AdminDashboard from './components/AdminDashboard';
 import PrivacyBanner from './components/PrivacyBanner';
@@ -67,6 +68,7 @@ export default function App() {
       <Links />
       <section id="sponsors"><Sponsors /></section>
       <section id="contact"><Contact /></section>
+      <StickerCarousel />
       <Footer />
       <Chat />
       <PrivacyBanner onOpenPolicy={() => setPolicyOpen(true)} />
