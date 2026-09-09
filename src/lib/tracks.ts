@@ -36,7 +36,7 @@ export const EPS: EP[] = [
     label: 'dachshund.land EP 2',
     coverColor: '#f59e0b',
     coverAccent: '#f5f5f4',
-    imageUrl: '/ChatGPT_Image_Aug_29,_2026,_06_13_53_PM.png',
+    imageUrl: '/ChatGPT_Image_Aug_22,_2026,_12_14_02_PM.png',
     tracks: [
       { title: 'Date Nights' },
       { title: 'Littlelongerone out in the streets' },
