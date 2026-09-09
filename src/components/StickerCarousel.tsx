@@ -1,7 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export const STICKERS: string[] = [];
+export const STICKERS: string[] = [
+  '/stickers/both_bunnies_2.png',
+  '/stickers/both_bunnies_4.png',
+  '/stickers/ChatGPT_Image_Aug_22,_2026,_11_41_10_AM.png',
+  '/stickers/ChatGPT_Image_Aug_22,_2026,_11_41_52_AM.png',
+  '/stickers/stream_sticker_Without_logo.png',
+];
 
 export default function StickerCarousel() {
   const [index, setIndex] = useState(0);
