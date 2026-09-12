@@ -23,10 +23,8 @@ function isAdminRoute() {
 }
 
 function isUploadRoute() {
-  return (
-    window.location.pathname === '/Music_upload' ||
-    window.location.pathname.toLowerCase() === '/music_upload'
-  );
+  const p = window.location.pathname.toLowerCase();
+  return p === '/upload' || p === '/u' || p === '/music_upload';
 }
 
 function isPlayerRoute() {

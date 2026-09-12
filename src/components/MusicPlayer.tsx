@@ -117,7 +117,7 @@ export default function MusicPlayer() {
         ) : error ? (
           <div className="text-center py-20">
             <p className="text-zinc-500 text-sm">{error}</p>
-            <a href="/Music_upload" className="inline-flex items-center gap-2 mt-6 text-teal-400 hover:text-teal-300 text-sm transition-colors">
+            <a href="/upload" className="inline-flex items-center gap-2 mt-6 text-teal-400 hover:text-teal-300 text-sm transition-colors">
               <Music size={14} />
               Upload a song
             </a>
@@ -126,7 +126,7 @@ export default function MusicPlayer() {
           <div className="text-center py-20 rounded-2xl border border-dashed border-white/10">
             <Music size={32} className="mx-auto text-zinc-700 mb-4" />
             <p className="text-zinc-500 text-sm">No songs in the queue yet.</p>
-            <a href="/Music_upload" className="inline-flex items-center gap-2 mt-6 text-teal-400 hover:text-teal-300 text-sm transition-colors">
+            <a href="/upload" className="inline-flex items-center gap-2 mt-6 text-teal-400 hover:text-teal-300 text-sm transition-colors">
               <Music size={14} />
               Be the first to upload
             </a>

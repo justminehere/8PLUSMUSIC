@@ -2,7 +2,7 @@ import SoundWave from './SoundWave';
 
 const socials = [
   { label: 'TIKTOK', href: 'https://www.tiktok.com/@8plusmusic?lang=en' },
-  { label: '8PLUSMUSIC UPLOAD', href: '/Music_upload' },
+  { label: '8PLUSMUSIC UPLOAD', href: '/upload' },
   { label: 'Instagram', href: 'https://www.instagram.com/8plusmusic/' },
   { label: 'Youtube', href: 'https://www.youtube.com/channel/UCkmp1KlrwUYSxiHc9wFguvw' },
   { label: 'Spotify', href: 'https://open.spotify.com/artist/7tClU9LaGgN6jWYy5OuS2R' },
