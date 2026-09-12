@@ -12,6 +12,8 @@ import Chat from './components/Chat';
 import AdminDashboard from './components/AdminDashboard';
 import PrivacyBanner from './components/PrivacyBanner';
 import PrivacyPolicy from './components/PrivacyPolicy';
+import MusicUpload from './components/MusicUpload';
+import MusicPlayer from './components/MusicPlayer';
 
 function isAdminRoute() {
   return (
@@ -20,11 +22,33 @@ function isAdminRoute() {
   );
 }
 
+function isUploadRoute() {
+  return (
+    window.location.pathname === '/Music_upload' ||
+    window.location.pathname.toLowerCase() === '/music_upload'
+  );
+}
+
+function isPlayerRoute() {
+  return (
+    window.location.pathname === '/player' ||
+    window.location.pathname.toLowerCase() === '/player'
+  );
+}
+
 export default function App() {
   const [policyOpen, setPolicyOpen] = useState(false);
 
   if (isAdminRoute()) {
     return <AdminDashboard />;
+  }
+
+  if (isUploadRoute()) {
+    return <MusicUpload />;
+  }
+
+  if (isPlayerRoute()) {
+    return <MusicPlayer />;
   }
 
   const [dachshundEp1, dachshundEp2, bunny] = EPS;

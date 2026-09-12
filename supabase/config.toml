@@ -1,0 +1,14 @@
+[functions.chat-send]
+verify_jwt = false
+
+[functions.contact-submit]
+verify_jwt = false
+
+[functions.track-links-admin]
+verify_jwt = false
+
+[functions.music-upload]
+verify_jwt = false
+
+[functions.music-queue]
+verify_jwt = false
