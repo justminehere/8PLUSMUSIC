@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Upload, CheckCircle, Music, Link2, User, Instagram, ChevronRight, ArrowLeft, Play } from 'lucide-react';
-
-const QUEUE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/music-queue`;
-const UPLOAD_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/music-upload`;
+import { fetchEdgeJson, isSupabaseConfigured } from '../lib/fetchEdge';
 
 interface UploadItem {
   id: string;
@@ -68,9 +66,12 @@ export default function MusicUpload() {
 
   const fetchQueue = async () => {
     setQueueLoading(true);
+    if (!isSupabaseConfigured()) {
+      setQueueLoading(false);
+      return;
+    }
     try {
-      const res = await fetch(QUEUE_URL);
-      const data = await res.json();
+      const data = await fetchEdgeJson<{ uploads: UploadItem[]; total: number }>('music-queue');
       if (data.uploads) {
         setQueue(data.uploads);
         setQueueTotal(data.total ?? 0);
@@ -107,9 +108,15 @@ export default function MusicUpload() {
       return;
     }
 
+    if (!isSupabaseConfigured()) {
+      setErrorMsg('Uploads are temporarily unavailable. Please try again later.');
+      setStatus('error');
+      return;
+    }
+
     setStatus('loading');
     try {
-      const res = await fetch(UPLOAD_URL, {
+      await fetchEdgeJson('music-upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -123,8 +130,6 @@ export default function MusicUpload() {
           tier: selectedTier,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Unknown error');
       setStatus('success');
       setForm({
         song_name: '',

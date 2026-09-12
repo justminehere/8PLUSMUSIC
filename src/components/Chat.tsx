@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { MessageCircle, Send, X, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { isSupabaseConfigured, edgeFunctionUrl } from '../lib/fetchEdge';
 
 interface Message {
   id: string;
@@ -80,7 +81,8 @@ export default function Chat() {
     const trimmed = input.trim();
     if (!trimmed) return;
     setInput('');
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-send`, {
+    if (!isSupabaseConfigured()) return;
+    const res = await fetch(edgeFunctionUrl('chat-send'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, message: trimmed }),

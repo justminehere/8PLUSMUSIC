@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Pause, SkipForward, SkipBack, ArrowLeft, Music, ExternalLink, Volume2 } from 'lucide-react';
-
-const QUEUE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/music-queue`;
+import { fetchEdgeJson, isSupabaseConfigured } from '../lib/fetchEdge';
 
 interface UploadItem {
   id: string;
@@ -48,15 +47,19 @@ export default function MusicPlayer() {
 
   useEffect(() => {
     const fetchQueue = async () => {
+      if (!isSupabaseConfigured()) {
+        setError('The music queue is temporarily unavailable.');
+        setLoading(false);
+        return;
+      }
       try {
-        const res = await fetch(QUEUE_URL);
-        const data = await res.json();
+        const data = await fetchEdgeJson<{ uploads: UploadItem[]; error?: string }>('music-queue');
         if (data.uploads && data.uploads.length > 0) {
           setSongs(data.uploads);
         } else if (data.error) {
           setError(data.error);
         }
-      } catch (err) {
+      } catch {
         setError('Could not load the queue. Please try again later.');
       }
       setLoading(false);

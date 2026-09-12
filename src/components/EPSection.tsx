@@ -50,8 +50,7 @@ export default function EPSection({ title, coverColor, coverAccent, tracks, imag
           const map: Record<string, string> = {};
           (data as TrackLink[]).forEach(l => { map[l.track_title] = l.itunes_url; });
           setLinks(map);
-        })
-        .catch(() => {});
+        });
     } catch {
       // Supabase not configured — tracks still render without iTunes links
     }

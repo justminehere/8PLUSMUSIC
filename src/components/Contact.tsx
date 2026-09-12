@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Send, CheckCircle } from 'lucide-react';
 import { consumeContactSubject } from '../lib/contactIntent';
-
-const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/contact-submit`;
+import { fetchEdgeJson, isSupabaseConfigured } from '../lib/fetchEdge';
 
 const SUBJECTS = ['Music', 'Marketing', 'Sales', 'Distribution', 'Sponsorship'] as const;
 
@@ -28,16 +27,19 @@ export default function Contact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.country || !form.subject || !form.message) return;
+    if (!isSupabaseConfigured()) {
+      setErrorMsg('Messaging is temporarily unavailable. Please try again later.');
+      setStatus('error');
+      return;
+    }
     setStatus('loading');
 
     try {
-      const res = await fetch(FN_URL, {
+      await fetchEdgeJson('contact-submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Unknown error');
       setStatus('success');
       setForm({ name: '', email: '', country: '', subject: '', message: '' });
     } catch (err) {

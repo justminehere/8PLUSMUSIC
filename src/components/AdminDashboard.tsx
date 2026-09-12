@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { EPS } from '../lib/tracks';
+import { edgeFunctionUrl } from '../lib/fetchEdge';
 import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music } from 'lucide-react';
 
 const ADMIN_PASSWORD = 'Jamilujuhudbu1!';
 const ADMIN_EMAIL    = 'bunevd@gmail.com';
 
 async function trackLinksApi(body: Record<string, string>) {
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-links-admin`;
-  const res = await fetch(url, {
+  const res = await fetch(edgeFunctionUrl('track-links-admin'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
