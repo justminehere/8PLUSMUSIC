@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { EPS } from '../lib/tracks';
 import { edgeFunctionUrl } from '../lib/fetchEdge';
-import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music } from 'lucide-react';
+import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp } from 'lucide-react';
 
 const ADMIN_PASSWORD = 'Jamilujuhudbu1!';
 const ADMIN_EMAIL    = 'bunevd@gmail.com';
@@ -51,7 +51,21 @@ interface TrackLink {
   itunes_url: string;
 }
 
-type Tab = 'contacts' | 'chat' | 'links';
+interface UploadItem {
+  id: string;
+  song_name: string;
+  song_url: string;
+  artist_name: string;
+  instagram_handle: string | null;
+  is_ai_music: boolean;
+  ai_type: string | null;
+  tier: string;
+  queue_position: number;
+  is_paid: boolean;
+  created_at: string;
+}
+
+type Tab = 'links' | 'contacts' | 'chat' | 'queue';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString([], {
@@ -266,26 +280,208 @@ function TrackLinksManager({ trackLinks, onRefresh }: { trackLinks: TrackLink[];
   );
 }
 
+// ── Music Queue Manager ─────────────────────────────────────────────────────
+function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefresh: () => void }) {
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  const sorted = [...items].sort((a, b) => a.queue_position - b.queue_position);
+
+  const swapPositions = async (a: UploadItem, b: UploadItem) => {
+    setBusy(p => ({ ...p, [a.id]: true, [b.id]: true }));
+    const [r1, r2] = await Promise.all([
+      supabase.from('music_uploads').update({ queue_position: b.queue_position }).eq('id', a.id),
+      supabase.from('music_uploads').update({ queue_position: a.queue_position }).eq('id', b.id),
+    ]);
+    setBusy(p => ({ ...p, [a.id]: false, [b.id]: false }));
+    if (!r1.error && !r2.error) onRefresh();
+  };
+
+  const moveToTop = async (item: UploadItem) => {
+    setBusy(p => ({ ...p, [item.id]: true }));
+    // Shift all items with lower position down by 1, then set this item to position 1
+    const above = sorted.filter(s => s.queue_position < item.queue_position);
+    await Promise.all(
+      above.map(s =>
+        supabase.from('music_uploads').update({ queue_position: s.queue_position + 1 }).eq('id', s.id)
+      )
+    );
+    await supabase.from('music_uploads').update({ queue_position: 1 }).eq('id', item.id);
+    setBusy(p => ({ ...p, [item.id]: false }));
+    onRefresh();
+  };
+
+  const handleDelete = async (item: UploadItem) => {
+    setBusy(p => ({ ...p, [item.id]: true }));
+    await supabase.from('music_uploads').delete().eq('id', item.id);
+    setBusy(p => ({ ...p, [item.id]: false }));
+    setConfirmId(null);
+    onRefresh();
+  };
+
+  if (sorted.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <Music size={32} className="mx-auto text-zinc-700 mb-4" />
+        <p className="text-zinc-500 text-sm">No songs in the queue.</p>
+      </div>
+    );
+  }
+
+  const TIER_COLORS: Record<string, string> = {
+    free: '#71717a',
+    skip_7: '#ec4899',
+    skip_15: '#f59e0b',
+    spot_1: '#ef4444',
+  };
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="divide-y divide-white/5">
+        {sorted.map((item, i) => {
+          const isBusy = busy[item.id];
+          const isFirst = i === 0;
+          const isLast = i === sorted.length - 1;
+
+          return (
+            <div key={item.id} className="px-5 py-4 flex items-center gap-3 hover:bg-white/[0.02] transition-colors">
+              {/* Position number */}
+              <span className="text-zinc-600 font-mono text-sm w-8 text-center flex-shrink-0">
+                {i + 1}
+              </span>
+
+              {/* Song info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-white truncate">{item.song_name}</span>
+                  {item.is_paid && (
+                    <span
+                      className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                      style={{
+                        background: `${TIER_COLORS[item.tier] ?? '#71717a'}18`,
+                        color: TIER_COLORS[item.tier] ?? '#a1a1aa',
+                      }}
+                    >
+                      {item.tier === 'spot_1' ? 'Spot 1' : item.tier === 'skip_15' ? 'Near Front' : item.tier === 'skip_7' ? 'Skip Ahead' : 'Priority'}
+                    </span>
+                  )}
+                  {item.is_ai_music && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-zinc-400 flex-shrink-0">
+                      AI{item.ai_type === 'hybrid' ? ' (Hybrid)' : ''}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-zinc-500">{item.artist_name}</span>
+                  {item.instagram_handle && (
+                    <a
+                      href={`https://instagram.com/${item.instagram_handle.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-pink-400 hover:text-pink-300 transition-colors"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {item.instagram_handle}
+                    </a>
+                  )}
+                  <a
+                    href={item.song_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    Open link
+                  </a>
+                </div>
+              </div>
+
+              {/* Reorder controls */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => moveToTop(item)}
+                  disabled={isBusy || isFirst}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-teal-500/20 transition-all disabled:opacity-20"
+                  title="Move to top (play next)"
+                >
+                  <ChevronsUp size={14} className="text-teal-400" />
+                </button>
+                <button
+                  onClick={() => !isFirst && swapPositions(item, sorted[i - 1])}
+                  disabled={isBusy || isFirst}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 transition-all disabled:opacity-20"
+                  title="Move up"
+                >
+                  <ArrowUp size={14} className="text-zinc-400" />
+                </button>
+                <button
+                  onClick={() => !isLast && swapPositions(item, sorted[i + 1])}
+                  disabled={isBusy || isLast}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 transition-all disabled:opacity-20"
+                  title="Move down"
+                >
+                  <ArrowDown size={14} className="text-zinc-400" />
+                </button>
+              </div>
+
+              {/* Delete */}
+              {confirmId === item.id ? (
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => handleDelete(item)}
+                    disabled={isBusy}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
+                  >
+                    {isBusy ? 'Deleting...' : 'Confirm'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmId(null)}
+                    className="px-2 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmId(item.id)}
+                  disabled={isBusy}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-red-500/20 transition-all disabled:opacity-30 flex-shrink-0"
+                  title="Delete song"
+                >
+                  <Trash2 size={14} className="text-zinc-500 hover:text-red-400 transition-colors" />
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Main dashboard ────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem('8pm_admin') === '1');
-  const [tab, setTab]       = useState<Tab>('links');
+  const [tab, setTab]       = useState<Tab>('queue');
   const [contacts, setContacts]   = useState<Contact[]>([]);
   const [chatMsgs, setChatMsgs]   = useState<ChatMessage[]>([]);
   const [trackLinks, setTrackLinks] = useState<TrackLink[]>([]);
+  const [queueItems, setQueueItems] = useState<UploadItem[]>([]);
   const [loading, setLoading]     = useState(false);
   const [expanded, setExpanded]   = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const [c, m, l] = await Promise.all([
+    const [c, m, l, q] = await Promise.all([
       supabase.from('contacts').select('*').order('created_at', { ascending: false }),
       supabase.from('chat_messages').select('*').order('created_at', { ascending: false }).limit(200),
       supabase.from('track_links').select('*').order('ep').order('track_title'),
+      supabase.from('music_uploads').select('*').order('queue_position', { ascending: true }),
     ]);
     if (c.data) setContacts(c.data as Contact[]);
     if (m.data) setChatMsgs(m.data as ChatMessage[]);
     if (l.data) setTrackLinks(l.data as TrackLink[]);
+    if (q.data) setQueueItems(q.data as UploadItem[]);
     setLoading(false);
   };
 
@@ -299,6 +495,7 @@ export default function AdminDashboard() {
   if (!authed) return <Login onLogin={() => setAuthed(true)} />;
 
   const TABS = [
+    { id: 'queue'    as Tab, label: 'Music Queue',           icon: Music },
     { id: 'links'    as Tab, label: 'Track Links',          icon: Link2 },
     { id: 'contacts' as Tab, label: 'Contact Submissions',  icon: Mail },
     { id: 'chat'     as Tab, label: 'Chat Messages',        icon: MessageCircle },
@@ -347,11 +544,10 @@ export default function AdminDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Linked Tracks',   value: trackLinks.length, color: '#ec4899' },
-            { label: 'Contacts',        value: contacts.length,   color: '#2dd4bf' },
-            { label: 'Chat Messages',   value: chatMsgs.length,   color: '#f472b6' },
-            { label: 'Chat Users',
-              value: new Set(chatMsgs.map(m => m.username)).size,  color: '#5eead4' },
+            { label: 'Queue Songs',     value: queueItems.length,  color: '#ec4899' },
+            { label: 'Linked Tracks',   value: trackLinks.length,  color: '#2dd4bf' },
+            { label: 'Contacts',        value: contacts.length,    color: '#f472b6' },
+            { label: 'Chat Messages',   value: chatMsgs.length,    color: '#5eead4' },
           ].map(stat => (
             <div
               key={stat.label}
@@ -381,6 +577,11 @@ export default function AdminDashboard() {
             </button>
           ))}
         </div>
+
+        {/* ── Music Queue tab ── */}
+        {tab === 'queue' && (
+          <MusicQueueManager items={queueItems} onRefresh={load} />
+        )}
 
         {/* ── Track Links tab ── */}
         {tab === 'links' && (
