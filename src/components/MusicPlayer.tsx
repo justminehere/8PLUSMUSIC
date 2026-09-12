@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Pause, SkipForward, SkipBack, ArrowLeft, Music, ExternalLink, Volume2 } from 'lucide-react';
 import { fetchEdgeJson, isSupabaseConfigured } from '../lib/fetchEdge';
 
@@ -16,6 +16,8 @@ interface UploadItem {
   created_at: string;
 }
 
+type PlayerType = 'youtube' | 'soundcloud' | 'unsupported';
+
 function getYouTubeId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
@@ -27,14 +29,34 @@ function getYouTubeId(url: string): string | null {
   return null;
 }
 
-function getEmbedUrl(url: string): string | null {
-  const ytId = getYouTubeId(url);
-  if (ytId) return `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`;
-  // SoundCloud and others: use as iframe with the URL
-  if (url.includes('soundcloud.com')) {
-    return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ec4899&auto_play=true`;
-  }
-  return null;
+function detectPlayerType(url: string): PlayerType {
+  if (getYouTubeId(url)) return 'youtube';
+  if (url.includes('soundcloud.com')) return 'soundcloud';
+  return 'unsupported';
+}
+
+function getYouTubeEmbedUrl(videoId: string, autoplay: boolean): string {
+  const params = new URLSearchParams({
+    rel: '0',
+    modestbranding: '1',
+    playsinline: '1',
+    autoplay: autoplay ? '1' : '0',
+  });
+  return `https://www.youtube.com/embed/${videoId}?${params.toString()}&enablejsapi=1`;
+}
+
+function getSoundCloudEmbedUrl(url: string, autoplay: boolean): string {
+  const params = new URLSearchParams({
+    url,
+    color: '%23ec4899',
+    auto_play: autoplay ? 'true' : 'false',
+    buying: 'false',
+    sharing: 'false',
+    download: 'false',
+    show_artwork: 'true',
+    visual: 'true',
+  });
+  return `https://w.soundcloud.com/player/?${params.toString()}`;
 }
 
 export default function MusicPlayer() {
@@ -43,7 +65,11 @@ export default function MusicPlayer() {
   const [loading, setLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState('');
+  const [iframeKey, setIframeKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const ytPlayerRef = useRef<YTPlayer | null>(null);
+  const scWidgetRef = useRef<SoundCloudWidget | null>(null);
+  const isPlayingRef = useRef(false);
 
   useEffect(() => {
     const fetchQueue = async () => {
@@ -68,10 +94,160 @@ export default function MusicPlayer() {
   }, []);
 
   const current = songs[currentIdx];
-  const embedUrl = current ? getEmbedUrl(current.song_url) : null;
+  const playerType = current ? detectPlayerType(current.song_url) : 'unsupported';
+  const ytId = current ? getYouTubeId(current.song_url) : null;
+
+  // Keep ref in sync for callbacks
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  // Clean up players when switching songs
+  const cleanupPlayers = useCallback(() => {
+    if (ytPlayerRef.current) {
+      try { ytPlayerRef.current.stopVideo(); } catch { /* ignore */ }
+      ytPlayerRef.current = null;
+    }
+    if (scWidgetRef.current) {
+      try { scWidgetRef.current.pause(); } catch { /* ignore */ }
+      scWidgetRef.current = null;
+    }
+  }, []);
+
+  // Initialize YouTube IFrame API player when iframe loads
+  const initYouTubePlayer = useCallback(() => {
+    if (!ytId || !iframeRef.current) return;
+
+    if (typeof window !== 'undefined' && (window as any).YT && (window as any).YT.Player) {
+      try {
+        ytPlayerRef.current = new (window as any).YT.Player(iframeRef.current, {
+          events: {
+            onReady: () => {
+              if (isPlayingRef.current) {
+                try { ytPlayerRef.current?.playVideo(); } catch { /* ignore */ }
+              }
+            },
+            onStateChange: (e: { data: number }) => {
+              // 0 = ended, 1 = playing, 2 = paused
+              if (e.data === 0) {
+                // Auto-advance to next song
+                if (currentIdx < songs.length - 1) {
+                  cleanupPlayers();
+                  setCurrentIdx(i => i + 1);
+                  setIsPlaying(true);
+                } else {
+                  setIsPlaying(false);
+                }
+              } else if (e.data === 1) {
+                setIsPlaying(true);
+              } else if (e.data === 2) {
+                // Only update if the pause came from the user, not our own call
+                // We don't set isPlaying to false here to avoid race conditions
+              }
+            },
+          },
+        });
+      } catch {
+        // API not ready yet, will retry
+      }
+    }
+  }, [ytId, currentIdx, songs.length, cleanupPlayers]);
+
+  // Initialize SoundCloud widget
+  const initSoundCloudPlayer = useCallback(() => {
+    if (!current || playerType !== 'soundcloud' || !iframeRef.current) return;
+
+    if (typeof window !== 'undefined' && (window as any).SC && (window as any).SC.Widget) {
+      try {
+        scWidgetRef.current = (window as any).SC.Widget(iframeRef.current);
+        scWidgetRef.current.bind((window as any).SC.Widget.Events.READY, () => {
+          if (isPlayingRef.current) {
+            try { scWidgetRef.current?.play(); } catch { /* ignore */ }
+          }
+        });
+        scWidgetRef.current.bind((window as any).SC.Widget.Events.FINISH, () => {
+          if (currentIdx < songs.length - 1) {
+            cleanupPlayers();
+            setCurrentIdx(i => i + 1);
+            setIsPlaying(true);
+          } else {
+            setIsPlaying(false);
+          }
+        });
+        scWidgetRef.current.bind((window as any).SC.Widget.Events.PLAY, () => {
+          setIsPlaying(true);
+        });
+        scWidgetRef.current.bind((window as any).SC.Widget.Events.PAUSE, () => {
+          // Don't set false here to avoid race with our own pause calls
+        });
+      } catch {
+        // Widget not ready yet
+      }
+    }
+  }, [current, playerType, currentIdx, songs.length, cleanupPlayers]);
+
+  // Load external player APIs once
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // YouTube IFrame API
+    if (!(window as any).YT && !document.getElementById('yt-iframe-api')) {
+      const tag = document.createElement('script');
+      tag.id = 'yt-iframe-api';
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(tag);
+    }
+
+    // SoundCloud Widget API
+    if (!(window as any).SC && !document.getElementById('sc-widget-api')) {
+      const tag = document.createElement('script');
+      tag.id = 'sc-widget-api';
+      tag.src = 'https://w.soundcloud.com/player/api.js';
+      document.head.appendChild(tag);
+    }
+  }, []);
+
+  // Reinitialize player when song or playing state changes
+  useEffect(() => {
+    if (!current || playerType === 'unsupported') return;
+
+    // Force iframe reload on song change
+    setIframeKey(k => k + 1);
+    cleanupPlayers();
+
+    // Small delay to let the new iframe mount
+    const timer = setTimeout(() => {
+      if (playerType === 'youtube') {
+        initYouTubePlayer();
+      } else if (playerType === 'soundcloud') {
+        initSoundCloudPlayer();
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [currentIdx]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle play/pause button
+  const togglePlay = useCallback(() => {
+    if (playerType === 'youtube' && ytPlayerRef.current) {
+      if (isPlaying) {
+        try { ytPlayerRef.current.pauseVideo(); } catch { /* ignore */ }
+      } else {
+        try { ytPlayerRef.current.playVideo(); } catch { /* ignore */ }
+      }
+    } else if (playerType === 'soundcloud' && scWidgetRef.current) {
+      if (isPlaying) {
+        try { scWidgetRef.current.pause(); } catch { /* ignore */ }
+      } else {
+        try { scWidgetRef.current.play(); } catch { /* ignore */ }
+      }
+    }
+    setIsPlaying(p => !p);
+  }, [isPlaying, playerType]);
 
   const playNext = () => {
     if (currentIdx < songs.length - 1) {
+      cleanupPlayers();
       setCurrentIdx(i => i + 1);
       setIsPlaying(true);
     }
@@ -79,15 +255,31 @@ export default function MusicPlayer() {
 
   const playPrev = () => {
     if (currentIdx > 0) {
+      cleanupPlayers();
       setCurrentIdx(i => i - 1);
       setIsPlaying(true);
     }
   };
 
   const selectSong = (idx: number) => {
+    if (idx === currentIdx) {
+      togglePlay();
+      return;
+    }
+    cleanupPlayers();
     setCurrentIdx(idx);
     setIsPlaying(true);
   };
+
+  // Compute embed URL
+  let embedUrl: string | null = null;
+  if (current) {
+    if (playerType === 'youtube' && ytId) {
+      embedUrl = getYouTubeEmbedUrl(ytId, isPlaying);
+    } else if (playerType === 'soundcloud') {
+      embedUrl = getSoundCloudEmbedUrl(current.song_url, isPlaying);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -171,18 +363,25 @@ export default function MusicPlayer() {
               </div>
 
               {/* Player */}
-              {isPlaying && embedUrl ? (
-                <div className="aspect-video w-full bg-black">
-                  <iframe
-                    ref={iframeRef}
-                    src={embedUrl}
-                    className="w-full h-full"
-                    frameBorder="0"
-                    allow="autoplay; encrypted-media"
-                    allowFullScreen
-                  />
+              {embedUrl ? (
+                <div className="relative w-full bg-black" style={{ minHeight: '166px' }}>
+                  {/* YouTube: use responsive 16:9. SoundCloud: fixed height visual player. */}
+                  <div
+                    className={playerType === 'youtube' ? 'aspect-video w-full' : 'w-full'}
+                    style={playerType === 'soundcloud' ? { height: '166px' } : undefined}
+                  >
+                    <iframe
+                      key={iframeKey}
+                      ref={iframeRef}
+                      src={embedUrl}
+                      className="w-full h-full"
+                      frameBorder="0"
+                      allow="autoplay; encrypted-media"
+                      allowFullScreen
+                    />
+                  </div>
                 </div>
-              ) : !embedUrl ? (
+              ) : (
                 <div className="p-8 text-center">
                   <p className="text-zinc-500 text-sm mb-4">
                     This song link can't be embedded directly.
@@ -198,17 +397,6 @@ export default function MusicPlayer() {
                     Open Song
                   </a>
                 </div>
-              ) : (
-                <div className="p-8 text-center">
-                  <button
-                    onClick={() => setIsPlaying(true)}
-                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 transition-transform hover:scale-105"
-                    style={{ background: 'linear-gradient(135deg, #ec4899, #2dd4bf)' }}
-                  >
-                    <Play size={24} color="black" className="ml-1" />
-                  </button>
-                  <p className="text-zinc-500 text-xs">Press play to listen</p>
-                </div>
               )}
 
               {/* Controls */}
@@ -222,7 +410,7 @@ export default function MusicPlayer() {
                   <SkipBack size={18} />
                 </button>
                 <button
-                  onClick={() => setIsPlaying(p => !p)}
+                  onClick={togglePlay}
                   className="w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105"
                   style={{ background: 'linear-gradient(135deg, #ec4899, #2dd4bf)' }}
                   aria-label={isPlaying ? 'Pause' : 'Play'}
