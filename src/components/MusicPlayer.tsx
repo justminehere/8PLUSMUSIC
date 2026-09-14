@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, SkipForward, SkipBack, ArrowLeft, Music, ExternalLink, Volume2, Trash2, X } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, ArrowLeft, Music, ExternalLink, Volume2 } from 'lucide-react';
 import { fetchEdgeJson, isSupabaseConfigured } from '../lib/fetchEdge';
 import { supabase } from '../lib/supabase';
 
@@ -71,8 +71,6 @@ export default function MusicPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState('');
   const [iframeKey, setIframeKey] = useState(0);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
-  const [removing, setRemoving] = useState<Record<string, boolean>>({});
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const ytPlayerRef = useRef<any>(null);
@@ -280,37 +278,6 @@ export default function MusicPlayer() {
     setIsPlaying(true);
   };
 
-  const handleDelete = async (idx: number) => {
-    const song = songs[idx];
-    if (!song) return;
-    setRemoving(p => ({ ...p, [song.id]: true }));
-
-    await supabase.from('music_uploads').delete().eq('id', song.id);
-
-    const wasCurrent = idx === currentIdx;
-    const wasBefore = idx < currentIdx;
-    const newLength = songs.length - 1;
-
-    setSongs(prev => prev.filter((_, i) => i !== idx));
-
-    if (wasBefore) {
-      setCurrentIdx(i => Math.max(0, i - 1));
-    } else if (wasCurrent) {
-      if (idx >= newLength) {
-        setCurrentIdx(Math.max(0, newLength - 1));
-      }
-      if (newLength === 0) {
-        setIsPlaying(false);
-      } else {
-        cleanupPlayers();
-        setIsPlaying(true);
-      }
-    }
-
-    setRemoving(p => ({ ...p, [song.id]: false }));
-    setDeleteConfirm(null);
-  };
-
   // Compute embed URL — no autoplay in URL; playback is controlled via Player API
   let embedUrl: string | null = null;
   if (current) {
@@ -474,64 +441,31 @@ export default function MusicPlayer() {
               </h3>
               <div className="space-y-2">
                 {songs.map((song, i) => (
-                  <div
+                  <button
                     key={song.id}
-                    className={`w-full flex items-center gap-3 rounded-xl p-3 transition-all ${
+                    onClick={() => selectSong(i)}
+                    className={`w-full flex items-center gap-4 rounded-xl p-3 text-left transition-all ${
                       i === currentIdx
                         ? 'bg-pink-500/10 border border-pink-500/30'
                         : 'border border-white/5 hover:border-white/10 hover:bg-white/[0.03]'
                     }`}
                   >
-                    {/* Clickable song info */}
-                    <button
-                      onClick={() => selectSong(i)}
-                      className="flex items-center gap-4 flex-1 min-w-0 text-left"
-                    >
-                      <span className="text-zinc-600 font-mono text-sm w-6 text-right flex-shrink-0">
-                        {i + 1}
+                    <span className="text-zinc-600 font-mono text-sm w-6 text-right flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{song.song_name}</p>
+                      <p className="text-xs text-zinc-500">{song.artist_name}</p>
+                    </div>
+                    {song.is_paid && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-400 flex-shrink-0">
+                        Priority
                       </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{song.song_name}</p>
-                        <p className="text-xs text-zinc-500">{song.artist_name}</p>
-                      </div>
-                      {song.is_paid && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-400 flex-shrink-0">
-                          Priority
-                        </span>
-                      )}
-                      {i === currentIdx && isPlaying && (
-                        <Volume2 size={14} className="text-teal-400 flex-shrink-0" />
-                      )}
-                    </button>
-
-                    {/* Delete button */}
-                    {deleteConfirm === i ? (
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button
-                          onClick={() => handleDelete(i)}
-                          disabled={removing[song.id]}
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
-                        >
-                          {removing[song.id] ? '...' : 'Delete'}
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(null)}
-                          className="p-1.5 rounded-lg text-zinc-400 hover:text-white transition-colors"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setDeleteConfirm(i)}
-                        disabled={removing[song.id]}
-                        className="p-2 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
-                        title="Remove from queue"
-                      >
-                        <Trash2 size={14} />
-                      </button>
                     )}
-                  </div>
+                    {i === currentIdx && isPlaying && (
+                      <Volume2 size={14} className="text-teal-400 flex-shrink-0" />
+                    )}
+                  </button>
                 ))}
               </div>
             </div>
