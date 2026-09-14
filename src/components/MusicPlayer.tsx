@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, SkipForward, SkipBack, ArrowLeft, Music, ExternalLink, Volume2 } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, ArrowLeft, Music, ExternalLink, Volume2, Trash2, X } from 'lucide-react';
 import { fetchEdgeJson, isSupabaseConfigured } from '../lib/fetchEdge';
+import { supabase } from '../lib/supabase';
 
 interface UploadItem {
   id: string;
@@ -35,21 +36,23 @@ function detectPlayerType(url: string): PlayerType {
   return 'unsupported';
 }
 
-function getYouTubeEmbedUrl(videoId: string, autoplay: boolean): string {
+function getYouTubeEmbedUrl(videoId: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const params = new URLSearchParams({
     rel: '0',
     modestbranding: '1',
     playsinline: '1',
-    autoplay: autoplay ? '1' : '0',
+    enablejsapi: '1',
   });
-  return `https://www.youtube.com/embed/${videoId}?${params.toString()}&enablejsapi=1`;
+  if (origin) params.set('origin', origin);
+  return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
 }
 
-function getSoundCloudEmbedUrl(url: string, autoplay: boolean): string {
+function getSoundCloudEmbedUrl(url: string): string {
   const params = new URLSearchParams({
     url,
     color: '%23ec4899',
-    auto_play: autoplay ? 'true' : 'false',
+    auto_play: 'false',
     buying: 'false',
     sharing: 'false',
     download: 'false',
@@ -59,6 +62,8 @@ function getSoundCloudEmbedUrl(url: string, autoplay: boolean): string {
   return `https://w.soundcloud.com/player/?${params.toString()}`;
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export default function MusicPlayer() {
   const [songs, setSongs] = useState<UploadItem[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -66,11 +71,50 @@ export default function MusicPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState('');
   const [iframeKey, setIframeKey] = useState(0);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const ytPlayerRef = useRef<YTPlayer | null>(null);
-  const scWidgetRef = useRef<SoundCloudWidget | null>(null);
-  const isPlayingRef = useRef(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [removing, setRemoving] = useState<Record<string, boolean>>({});
 
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const scWidgetRef = useRef<any>(null);
+  const isPlayingRef = useRef(false);
+  const onSongEndRef = useRef<() => void>(() => {});
+
+  const current = songs[currentIdx];
+  const playerType = current ? detectPlayerType(current.song_url) : 'unsupported';
+  const ytId = current ? getYouTubeId(current.song_url) : null;
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  // Keep onSongEndRef fresh with latest state so event callbacks always see current data
+  useEffect(() => {
+    onSongEndRef.current = () => {
+      const idx = currentIdx;
+      const endedSong = songs[idx];
+      if (!endedSong) return;
+
+      supabase.from('music_uploads').delete().eq('id', endedSong.id).then();
+
+      const newLength = songs.length - 1;
+      setSongs(prev => {
+        if (!prev[idx] || prev[idx].id !== endedSong.id) return prev;
+        return prev.filter((_, i) => i !== idx);
+      });
+
+      if (newLength === 0) {
+        setIsPlaying(false);
+      } else {
+        if (idx >= newLength) {
+          setCurrentIdx(Math.max(0, newLength - 1));
+        }
+        setIsPlaying(true);
+      }
+    };
+  });
+
+  // Fetch queue on mount
   useEffect(() => {
     const fetchQueue = async () => {
       if (!isSupabaseConfigured()) {
@@ -93,104 +137,10 @@ export default function MusicPlayer() {
     fetchQueue();
   }, []);
 
-  const current = songs[currentIdx];
-  const playerType = current ? detectPlayerType(current.song_url) : 'unsupported';
-  const ytId = current ? getYouTubeId(current.song_url) : null;
-
-  // Keep ref in sync for callbacks
-  useEffect(() => {
-    isPlayingRef.current = isPlaying;
-  }, [isPlaying]);
-
-  // Clean up players when switching songs
-  const cleanupPlayers = useCallback(() => {
-    if (ytPlayerRef.current) {
-      try { ytPlayerRef.current.stopVideo(); } catch { /* ignore */ }
-      ytPlayerRef.current = null;
-    }
-    if (scWidgetRef.current) {
-      try { scWidgetRef.current.pause(); } catch { /* ignore */ }
-      scWidgetRef.current = null;
-    }
-  }, []);
-
-  // Initialize YouTube IFrame API player when iframe loads
-  const initYouTubePlayer = useCallback(() => {
-    if (!ytId || !iframeRef.current) return;
-
-    if (typeof window !== 'undefined' && (window as any).YT && (window as any).YT.Player) {
-      try {
-        ytPlayerRef.current = new (window as any).YT.Player(iframeRef.current, {
-          events: {
-            onReady: () => {
-              if (isPlayingRef.current) {
-                try { ytPlayerRef.current?.playVideo(); } catch { /* ignore */ }
-              }
-            },
-            onStateChange: (e: { data: number }) => {
-              // 0 = ended, 1 = playing, 2 = paused
-              if (e.data === 0) {
-                // Auto-advance to next song
-                if (currentIdx < songs.length - 1) {
-                  cleanupPlayers();
-                  setCurrentIdx(i => i + 1);
-                  setIsPlaying(true);
-                } else {
-                  setIsPlaying(false);
-                }
-              } else if (e.data === 1) {
-                setIsPlaying(true);
-              } else if (e.data === 2) {
-                // Only update if the pause came from the user, not our own call
-                // We don't set isPlaying to false here to avoid race conditions
-              }
-            },
-          },
-        });
-      } catch {
-        // API not ready yet, will retry
-      }
-    }
-  }, [ytId, currentIdx, songs.length, cleanupPlayers]);
-
-  // Initialize SoundCloud widget
-  const initSoundCloudPlayer = useCallback(() => {
-    if (!current || playerType !== 'soundcloud' || !iframeRef.current) return;
-
-    if (typeof window !== 'undefined' && (window as any).SC && (window as any).SC.Widget) {
-      try {
-        scWidgetRef.current = (window as any).SC.Widget(iframeRef.current);
-        scWidgetRef.current.bind((window as any).SC.Widget.Events.READY, () => {
-          if (isPlayingRef.current) {
-            try { scWidgetRef.current?.play(); } catch { /* ignore */ }
-          }
-        });
-        scWidgetRef.current.bind((window as any).SC.Widget.Events.FINISH, () => {
-          if (currentIdx < songs.length - 1) {
-            cleanupPlayers();
-            setCurrentIdx(i => i + 1);
-            setIsPlaying(true);
-          } else {
-            setIsPlaying(false);
-          }
-        });
-        scWidgetRef.current.bind((window as any).SC.Widget.Events.PLAY, () => {
-          setIsPlaying(true);
-        });
-        scWidgetRef.current.bind((window as any).SC.Widget.Events.PAUSE, () => {
-          // Don't set false here to avoid race with our own pause calls
-        });
-      } catch {
-        // Widget not ready yet
-      }
-    }
-  }, [current, playerType, currentIdx, songs.length, cleanupPlayers]);
-
   // Load external player APIs once
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // YouTube IFrame API
     if (!(window as any).YT && !document.getElementById('yt-iframe-api')) {
       const tag = document.createElement('script');
       tag.id = 'yt-iframe-api';
@@ -198,7 +148,6 @@ export default function MusicPlayer() {
       document.head.appendChild(tag);
     }
 
-    // SoundCloud Widget API
     if (!(window as any).SC && !document.getElementById('sc-widget-api')) {
       const tag = document.createElement('script');
       tag.id = 'sc-widget-api';
@@ -207,27 +156,87 @@ export default function MusicPlayer() {
     }
   }, []);
 
-  // Reinitialize player when song or playing state changes
+  const cleanupPlayers = useCallback(() => {
+    if (ytPlayerRef.current) {
+      try { ytPlayerRef.current.destroy(); } catch { /* ignore */ }
+      ytPlayerRef.current = null;
+    }
+    if (scWidgetRef.current) {
+      try { scWidgetRef.current.pause(); } catch { /* ignore */ }
+      scWidgetRef.current = null;
+    }
+  }, []);
+
+  // Initialize player when the current song changes (including when songs first load)
   useEffect(() => {
     if (!current || playerType === 'unsupported') return;
 
-    // Force iframe reload on song change
-    setIframeKey(k => k + 1);
+    let cancelled = false;
     cleanupPlayers();
+    setIframeKey(k => k + 1);
 
-    // Small delay to let the new iframe mount
-    const timer = setTimeout(() => {
-      if (playerType === 'youtube') {
-        initYouTubePlayer();
-      } else if (playerType === 'soundcloud') {
-        initSoundCloudPlayer();
-      }
+    let attempts = 0;
+    const maxAttempts = 25; // 5 seconds at 200ms intervals
+
+    const initTimer = setTimeout(() => {
+      const tryInit = () => {
+        if (cancelled) return;
+
+        if (playerType === 'youtube' && ytId) {
+          if ((window as any).YT && (window as any).YT.Player && iframeRef.current) {
+            try {
+              ytPlayerRef.current = new (window as any).YT.Player(iframeRef.current, {
+                events: {
+                  onReady: () => {
+                    if (isPlayingRef.current) {
+                      try { ytPlayerRef.current?.playVideo(); } catch { /* ignore */ }
+                    }
+                  },
+                  onStateChange: (e: { data: number }) => {
+                    if (e.data === 0) {
+                      onSongEndRef.current();
+                    } else if (e.data === 1) {
+                      setIsPlaying(true);
+                    }
+                  },
+                },
+              });
+            } catch { /* ignore */ }
+          } else if (attempts < maxAttempts) {
+            attempts++;
+            setTimeout(tryInit, 200);
+          }
+        } else if (playerType === 'soundcloud') {
+          if ((window as any).SC && (window as any).SC.Widget && iframeRef.current) {
+            try {
+              scWidgetRef.current = (window as any).SC.Widget(iframeRef.current);
+              scWidgetRef.current.bind((window as any).SC.Widget.Events.READY, () => {
+                if (isPlayingRef.current) {
+                  try { scWidgetRef.current?.play(); } catch { /* ignore */ }
+                }
+              });
+              scWidgetRef.current.bind((window as any).SC.Widget.Events.FINISH, () => {
+                onSongEndRef.current();
+              });
+              scWidgetRef.current.bind((window as any).SC.Widget.Events.PLAY, () => {
+                setIsPlaying(true);
+              });
+            } catch { /* ignore */ }
+          } else if (attempts < maxAttempts) {
+            attempts++;
+            setTimeout(tryInit, 200);
+          }
+        }
+      };
+      tryInit();
     }, 300);
 
-    return () => clearTimeout(timer);
-  }, [currentIdx]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+      clearTimeout(initTimer);
+    };
+  }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Handle play/pause button
   const togglePlay = useCallback(() => {
     if (playerType === 'youtube' && ytPlayerRef.current) {
       if (isPlaying) {
@@ -271,13 +280,44 @@ export default function MusicPlayer() {
     setIsPlaying(true);
   };
 
-  // Compute embed URL
+  const handleDelete = async (idx: number) => {
+    const song = songs[idx];
+    if (!song) return;
+    setRemoving(p => ({ ...p, [song.id]: true }));
+
+    await supabase.from('music_uploads').delete().eq('id', song.id);
+
+    const wasCurrent = idx === currentIdx;
+    const wasBefore = idx < currentIdx;
+    const newLength = songs.length - 1;
+
+    setSongs(prev => prev.filter((_, i) => i !== idx));
+
+    if (wasBefore) {
+      setCurrentIdx(i => Math.max(0, i - 1));
+    } else if (wasCurrent) {
+      if (idx >= newLength) {
+        setCurrentIdx(Math.max(0, newLength - 1));
+      }
+      if (newLength === 0) {
+        setIsPlaying(false);
+      } else {
+        cleanupPlayers();
+        setIsPlaying(true);
+      }
+    }
+
+    setRemoving(p => ({ ...p, [song.id]: false }));
+    setDeleteConfirm(null);
+  };
+
+  // Compute embed URL — no autoplay in URL; playback is controlled via Player API
   let embedUrl: string | null = null;
   if (current) {
     if (playerType === 'youtube' && ytId) {
-      embedUrl = getYouTubeEmbedUrl(ytId, isPlaying);
+      embedUrl = getYouTubeEmbedUrl(ytId);
     } else if (playerType === 'soundcloud') {
-      embedUrl = getSoundCloudEmbedUrl(current.song_url, isPlaying);
+      embedUrl = getSoundCloudEmbedUrl(current.song_url);
     }
   }
 
@@ -365,7 +405,6 @@ export default function MusicPlayer() {
               {/* Player */}
               {embedUrl ? (
                 <div className="relative w-full bg-black" style={{ minHeight: '166px' }}>
-                  {/* YouTube: use responsive 16:9. SoundCloud: fixed height visual player. */}
                   <div
                     className={playerType === 'youtube' ? 'aspect-video w-full' : 'w-full'}
                     style={playerType === 'soundcloud' ? { height: '166px' } : undefined}
@@ -435,31 +474,64 @@ export default function MusicPlayer() {
               </h3>
               <div className="space-y-2">
                 {songs.map((song, i) => (
-                  <button
+                  <div
                     key={song.id}
-                    onClick={() => selectSong(i)}
-                    className={`w-full flex items-center gap-4 rounded-xl p-3 text-left transition-all ${
+                    className={`w-full flex items-center gap-3 rounded-xl p-3 transition-all ${
                       i === currentIdx
                         ? 'bg-pink-500/10 border border-pink-500/30'
                         : 'border border-white/5 hover:border-white/10 hover:bg-white/[0.03]'
                     }`}
                   >
-                    <span className="text-zinc-600 font-mono text-sm w-6 text-right flex-shrink-0">
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{song.song_name}</p>
-                      <p className="text-xs text-zinc-500">{song.artist_name}</p>
-                    </div>
-                    {song.is_paid && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-400 flex-shrink-0">
-                        Priority
+                    {/* Clickable song info */}
+                    <button
+                      onClick={() => selectSong(i)}
+                      className="flex items-center gap-4 flex-1 min-w-0 text-left"
+                    >
+                      <span className="text-zinc-600 font-mono text-sm w-6 text-right flex-shrink-0">
+                        {i + 1}
                       </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{song.song_name}</p>
+                        <p className="text-xs text-zinc-500">{song.artist_name}</p>
+                      </div>
+                      {song.is_paid && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-400 flex-shrink-0">
+                          Priority
+                        </span>
+                      )}
+                      {i === currentIdx && isPlaying && (
+                        <Volume2 size={14} className="text-teal-400 flex-shrink-0" />
+                      )}
+                    </button>
+
+                    {/* Delete button */}
+                    {deleteConfirm === i ? (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => handleDelete(i)}
+                          disabled={removing[song.id]}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
+                        >
+                          {removing[song.id] ? '...' : 'Delete'}
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          className="p-1.5 rounded-lg text-zinc-400 hover:text-white transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDeleteConfirm(i)}
+                        disabled={removing[song.id]}
+                        className="p-2 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
+                        title="Remove from queue"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     )}
-                    {i === currentIdx && isPlaying && (
-                      <Volume2 size={14} className="text-teal-400 flex-shrink-0" />
-                    )}
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
