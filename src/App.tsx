@@ -8,7 +8,6 @@ import Sponsors from './components/Sponsors';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
 import StickerCarousel from './components/StickerCarousel';
-import Chat from './components/Chat';
 import AdminDashboard from './components/AdminDashboard';
 import PrivacyBanner from './components/PrivacyBanner';
 import PrivacyPolicy from './components/PrivacyPolicy';
@@ -38,6 +37,8 @@ function isPlayerRoute() {
 export default function App() {
   const [policyOpen, setPolicyOpen] = useState(false);
   const [showEntry, setShowEntry] = useState(true);
+
+  const openMenu = useCallback(() => setShowEntry(true), []);
 
   const handleNavigate = useCallback((target: string, external?: boolean) => {
     setShowEntry(false);
@@ -71,7 +72,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-black">
-      {showEntry && <EntryPage onNavigate={handleNavigate} />}
+      {showEntry && <EntryPage onNavigate={handleNavigate} onClose={() => setShowEntry(false)} />}
 
       <Hero />
 
@@ -112,9 +113,25 @@ export default function App() {
       <section id="contact"><Contact /></section>
       <StickerCarousel />
       <Footer />
-      <Chat />
       <PrivacyBanner onOpenPolicy={() => setPolicyOpen(true)} />
       {policyOpen && <PrivacyPolicy onClose={() => setPolicyOpen(false)} />}
+
+      {/* Floating menu button to reopen the arcade entry page */}
+      {!showEntry && (
+        <button
+          onClick={openMenu}
+          className="fixed top-4 right-4 z-40 px-4 py-2 font-press-start text-white"
+          style={{
+            fontSize: '8px',
+            letterSpacing: '0.05em',
+            border: '2px solid rgba(45, 212, 191, 0.45)',
+            background: 'rgba(0, 0, 0, 0.75)',
+            transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+          }}
+        >
+          MENU
+        </button>
+      )}
     </div>
   );
 }

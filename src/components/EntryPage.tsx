@@ -16,7 +16,7 @@ const MENU_ITEMS: MenuItem[] = [
   { label: 'BECOME A FAN', target: 'sponsors' },
 ];
 
-export default function EntryPage({ onNavigate }: { onNavigate: (target: string, external?: boolean) => void }) {
+export default function EntryPage({ onNavigate, onClose }: { onNavigate: (target: string, external?: boolean) => void; onClose?: () => void }) {
   const [phase, setPhase] = useState<Phase>('black');
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
@@ -183,15 +183,25 @@ export default function EntryPage({ onNavigate }: { onNavigate: (target: string,
         )}
       </div>
 
-      {/* Skip Intro */}
-      {showSkip && (
-        <button
-          onClick={skipIntro}
-          className="entry-skip fixed bottom-5 right-5 z-50"
-        >
-          SKIP INTRO
-        </button>
-      )}
+      {/* Skip Intro / Close */}
+      <div className="fixed bottom-5 right-5 z-50 flex gap-2">
+        {showSkip && (
+          <button
+            onClick={skipIntro}
+            className="entry-skip"
+          >
+            SKIP INTRO
+          </button>
+        )}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="entry-skip"
+          >
+            BACK
+          </button>
+        )}
+      </div>
     </div>
   );
 }
