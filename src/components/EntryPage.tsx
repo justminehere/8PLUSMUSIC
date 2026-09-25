@@ -43,7 +43,6 @@ export default function EntryPage({ onNavigate }: { onNavigate: (target: string,
   const skipIntro = () => setPhase('done');
 
   const handleMenuClick = (item: MenuItem) => {
-    try { sessionStorage.setItem('8pm_intro_seen', '1'); } catch { /* ignore */ }
     onNavigate(item.target, item.external);
   };
 

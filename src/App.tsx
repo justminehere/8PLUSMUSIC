@@ -35,17 +35,9 @@ function isPlayerRoute() {
   );
 }
 
-function introAlreadySeen(): boolean {
-  try {
-    return sessionStorage.getItem('8pm_intro_seen') === '1';
-  } catch {
-    return false;
-  }
-}
-
 export default function App() {
   const [policyOpen, setPolicyOpen] = useState(false);
-  const [showEntry, setShowEntry] = useState(() => !introAlreadySeen());
+  const [showEntry, setShowEntry] = useState(true);
 
   const handleNavigate = useCallback((target: string, external?: boolean) => {
     setShowEntry(false);
