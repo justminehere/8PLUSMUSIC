@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Press+Start+2P&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -90,4 +90,206 @@ body {
   transform: translateX(0);
   transition: opacity 0.4s ease-out, transform 0.4s ease-out,
               background-color 0.2s, color 0.2s;
+}
+
+/* ── Press Start 2P font class ──────────────────────── */
+.font-press-start {
+  font-family: 'Press Start 2P', monospace;
+}
+
+/* ── Entry / Arcade screen ──────────────────────────── */
+.entry-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.18) 0px,
+    rgba(0, 0, 0, 0.18) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0.5;
+}
+
+.entry-scanline-moving {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(45, 212, 191, 0.35), transparent);
+  animation: scanlineMove 6s linear infinite;
+  top: 0;
+}
+
+@keyframes scanlineMove {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100vh); }
+}
+
+.entry-glitch-overlay {
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(45, 212, 191, 0.018) 50%, transparent 100%);
+  animation: glitchDrift 8s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes glitchDrift {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-1px); }
+  40%      { transform: translateX(1px); }
+  60%      { transform: translateX(-1px); }
+  80%      { transform: translateX(1px); }
+}
+
+.entry-glitch-flash {
+  background: #2dd4bf;
+  animation: glitchFlash 200ms ease-out forwards;
+}
+
+@keyframes glitchFlash {
+  0%   { opacity: 0.8; transform: translateX(0) skewX(0deg); }
+  20%  { opacity: 0.3; transform: translateX(-4px) skewX(2deg); }
+  40%  { opacity: 0.6; transform: translateX(3px) skewX(-2deg); }
+  60%  { opacity: 0.2; transform: translateX(-2px) skewX(1deg); }
+  100% { opacity: 0; }
+}
+
+/* Pixel stars */
+.entry-star {
+  opacity: 0;
+  animation: starBlink ease-in-out infinite;
+}
+
+@keyframes starBlink {
+  0%, 100% { opacity: 0.1; }
+  50%      { opacity: 0.8; }
+}
+
+/* Pixel sparks */
+.entry-spark {
+  width: 2px;
+  height: 2px;
+  opacity: 0;
+  animation: sparkBurst 5s ease-out infinite;
+}
+
+@keyframes sparkBurst {
+  0%, 85%, 100% { opacity: 0; transform: scale(1); }
+  87%           { opacity: 1; transform: scale(1); box-shadow: 0 0 6px currentColor; }
+  90%           { opacity: 0.5; transform: scale(2); }
+  93%           { opacity: 0; transform: scale(0.5); }
+}
+
+/* Title CRT flicker */
+.entry-title {
+  animation: titleFlicker 1.5s ease-out both;
+}
+
+@keyframes titleFlicker {
+  0%   { opacity: 0; }
+  10%  { opacity: 0.4; }
+  15%  { opacity: 0.1; }
+  25%  { opacity: 0.9; }
+  30%  { opacity: 0.3; }
+  40%  { opacity: 1; }
+  45%  { opacity: 0.5; }
+  55%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* Bunny reveal */
+.entry-bunny {
+  animation: bunnyReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.entry-bunny-img {
+  display: block;
+  filter: drop-shadow(0 0 20px rgba(236, 72, 153, 0.3)) drop-shadow(0 0 40px rgba(45, 212, 191, 0.15));
+  image-rendering: pixelated;
+}
+
+@keyframes bunnyReveal {
+  0%   { opacity: 0; transform: scale(0.8); }
+  60%  { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Menu items appear one by one */
+.entry-menu-item {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(8px, 2.4vw, 13px);
+  color: #ffffff;
+  letter-spacing: 0.08em;
+  padding: 10px 24px;
+  border: 2px solid rgba(45, 212, 191, 0.45);
+  background: rgba(0, 0, 0, 0.6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 280px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease, color 0.15s ease;
+  animation: menuItemIn 0.4s ease-out both;
+  opacity: 0;
+}
+
+@keyframes menuItemIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.entry-menu-item:hover,
+.entry-menu-item:focus {
+  border-color: rgba(236, 72, 153, 0.8);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.45), 0 0 24px rgba(236, 72, 153, 0.2);
+  transform: translateX(3px);
+  outline: none;
+}
+
+.entry-menu-item:active {
+  transform: translateX(1px) scale(0.98);
+}
+
+/* Blinking arrow selector */
+.entry-arrow {
+  color: #ec4899;
+  font-family: 'Press Start 2P', monospace;
+  animation: arrowBlink 0.5s step-end infinite;
+  flex-shrink: 0;
+}
+
+@keyframes arrowBlink {
+  0%, 50%   { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Skip Intro button */
+.entry-skip {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  letter-spacing: 0.05em;
+}
+
+.entry-skip:hover {
+  color: #2dd4bf;
+  border-color: rgba(45, 212, 191, 0.5);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .entry-title,
+  .entry-bunny,
+  .entry-menu-item,
+  .entry-star,
+  .entry-spark,
+  .entry-scanline-moving,
+  .entry-glitch-overlay {
+    animation: none !important;
+  }
+  .entry-menu-item { opacity: 1; }
+  .entry-star { opacity: 0.4; }
 }

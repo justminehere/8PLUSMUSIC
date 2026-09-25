@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { EPS } from './lib/tracks';
 import Hero from './components/Hero';
 import EPSection from './components/EPSection';
@@ -14,6 +14,7 @@ import PrivacyBanner from './components/PrivacyBanner';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import MusicUpload from './components/MusicUpload';
 import MusicPlayer from './components/MusicPlayer';
+import EntryPage from './components/EntryPage';
 
 function isAdminRoute() {
   return (
@@ -34,8 +35,33 @@ function isPlayerRoute() {
   );
 }
 
+function introAlreadySeen(): boolean {
+  try {
+    return sessionStorage.getItem('8pm_intro_seen') === '1';
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
   const [policyOpen, setPolicyOpen] = useState(false);
+  const [showEntry, setShowEntry] = useState(() => !introAlreadySeen());
+
+  const handleNavigate = useCallback((target: string, external?: boolean) => {
+    setShowEntry(false);
+    if (external) {
+      window.location.href = '/' + target;
+      return;
+    }
+    requestAnimationFrame(() => {
+      const el = document.getElementById(target);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  }, []);
 
   if (isAdminRoute()) {
     return <AdminDashboard />;
@@ -53,6 +79,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-black">
+      {showEntry && <EntryPage onNavigate={handleNavigate} />}
+
       <Hero />
 
       <section id="releases">
@@ -87,7 +115,7 @@ export default function App() {
       </section>
 
       <section id="about"><About /></section>
-      <Links />
+      <section id="socials"><Links /></section>
       <section id="sponsors"><Sponsors /></section>
       <section id="contact"><Contact /></section>
       <StickerCarousel />
