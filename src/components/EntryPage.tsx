@@ -67,7 +67,7 @@ export default function EntryPage({ onNavigate }: { onNavigate: (target: string,
       delay: Math.random() * 6,
       color: Math.random() < 0.5 ? '#ec4899' : '#2dd4bf',
     })),
-  []);
+  );
 
   const atmosphereVisible = phase !== 'black';
   const bunnyVisible = phase === 'bunny' || phase === 'title' || phase === 'menu' || phase === 'done';
@@ -76,16 +76,16 @@ export default function EntryPage({ onNavigate }: { onNavigate: (target: string,
   const showSkip = phase !== 'done' && phase !== 'black';
 
   return (
-    <div className="fixed inset-0 z-50 bg-black overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black overflow-y-auto overflow-x-hidden">
       {/* CRT scanlines */}
       {atmosphereVisible && (
         <>
-          <div className="entry-scanlines absolute inset-0 pointer-events-none z-30" />
-          <div className="entry-scanline-moving absolute inset-x-0 pointer-events-none z-30" />
-          <div className="entry-glitch-overlay absolute inset-0 pointer-events-none z-20" />
+          <div className="entry-scanlines fixed inset-0 pointer-events-none z-30" />
+          <div className="entry-scanline-moving fixed inset-x-0 pointer-events-none z-30" />
+          <div className="entry-glitch-overlay fixed inset-0 pointer-events-none z-20" />
 
           {/* Pixel stars */}
-          <div className="absolute inset-0 pointer-events-none z-10">
+          <div className="fixed inset-0 pointer-events-none z-10">
             {stars.map(s => (
               <div
                 key={s.id}
@@ -104,7 +104,7 @@ export default function EntryPage({ onNavigate }: { onNavigate: (target: string,
           </div>
 
           {/* Pixel sparks */}
-          <div className="absolute inset-0 pointer-events-none z-10">
+          <div className="fixed inset-0 pointer-events-none z-10">
             {sparks.map(s => (
               <div
                 key={s.id}
@@ -123,15 +123,15 @@ export default function EntryPage({ onNavigate }: { onNavigate: (target: string,
 
       {/* Glitch flash during intro */}
       {phase === 'glitch' && (
-        <div className="entry-glitch-flash absolute inset-0 z-40 pointer-events-none" />
+        <div className="entry-glitch-flash fixed inset-0 z-40 pointer-events-none" />
       )}
 
-      {/* Main content */}
-      <div className="relative z-40 h-full flex flex-col items-center justify-center px-6 py-8">
+      {/* Main content — min-height fills screen, but grows if content overflows */}
+      <div className="relative z-40 min-h-screen flex flex-col items-center justify-center px-6 py-10">
         {/* Title */}
         {titleVisible && (
           <h1
-            className="entry-title font-press-start text-center mb-6 md:mb-8"
+            className="entry-title font-press-start text-center mb-4 md:mb-6"
             style={{
               color: '#ffffff',
               fontSize: 'clamp(10px, 3vw, 18px)',
@@ -143,17 +143,19 @@ export default function EntryPage({ onNavigate }: { onNavigate: (target: string,
           </h1>
         )}
 
-        {/* Bunny GIF */}
+        {/* Bunny GIF — constrained by both width and height so it always fits */}
         {bunnyVisible && (
-          <div className="entry-bunny mb-8 md:mb-10">
+          <div className="entry-bunny mb-6 md:mb-8 flex justify-center">
             <img
               src="/bunny_lady_gif.gif"
               alt="8PlusMusic Bunny"
               className="entry-bunny-img"
               style={{
-                maxWidth: 'min(55vw, 320px)',
-                width: '100%',
+                maxWidth: 'min(45vw, 280px)',
+                maxHeight: '45vh',
+                width: 'auto',
                 height: 'auto',
+                objectFit: 'contain',
               }}
             />
           </div>
@@ -186,7 +188,7 @@ export default function EntryPage({ onNavigate }: { onNavigate: (target: string,
       {showSkip && (
         <button
           onClick={skipIntro}
-          className="entry-skip absolute bottom-5 right-5 z-50"
+          className="entry-skip fixed bottom-5 right-5 z-50"
         >
           SKIP INTRO
         </button>
