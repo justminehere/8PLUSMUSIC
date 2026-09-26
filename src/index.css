@@ -915,8 +915,41 @@ body {
 }
 
 .vote-btn-idle:hover {
-  transform: scale(1.1);
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.1);
+  transform: scale(1.12);
+}
+
+.vote-btn-idle:hover .vote-glow-pink {
+  opacity: 1;
+}
+
+.vote-btn-idle:hover .vote-glow-teal {
+  opacity: 1;
+}
+
+.vote-glow-pink {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  box-shadow: 0 0 24px 4px rgba(236, 72, 153, 0.5);
+}
+
+.vote-glow-teal {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  box-shadow: 0 0 24px 4px rgba(45, 212, 191, 0.5);
+}
+
+/* Skip option hover glow */
+@keyframes skipGlowPulse {
+  0%, 100% { box-shadow: 0 0 12px 0px currentColor; }
+  50%      { box-shadow: 0 0 20px 4px currentColor; }
+}
+
+.skip-option-hover {
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.skip-option-hover:hover {
+  transform: scale(1.04);
 }
 
 .vote-btn-active-pink {

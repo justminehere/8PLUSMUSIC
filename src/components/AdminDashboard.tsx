@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { EPS } from '../lib/tracks';
 import { edgeFunctionUrl } from '../lib/fetchEdge';
-import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp } from 'lucide-react';
+import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp, Play, Square } from 'lucide-react';
 import ArcadeBackButton from './ArcadeBackButton';
 
 const ADMIN_PASSWORD = 'Jamilujuhudbu1!';
@@ -64,6 +64,7 @@ interface UploadItem {
   queue_position: number;
   is_paid: boolean;
   created_at: string;
+  play_started_at: string | null;
   real_name: string | null;
   phone_number: string | null;
   tiktok_link: string | null;
@@ -351,6 +352,25 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
     onRefresh();
   };
 
+  const startPlayback = async (item: UploadItem) => {
+    setBusy(p => ({ ...p, [item.id]: true }));
+    // Clear any previously playing song
+    const playing = sorted.filter(s => s.play_started_at && s.id !== item.id);
+    await Promise.all(
+      playing.map(s =>
+        supabase.from('music_uploads').update({ play_started_at: null }).eq('id', s.id)
+      )
+    );
+    // Toggle: if this song is already playing, stop it; otherwise start it
+    if (item.play_started_at) {
+      await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', item.id);
+    } else {
+      await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', item.id);
+    }
+    setBusy(p => ({ ...p, [item.id]: false }));
+    onRefresh();
+  };
+
   if (sorted.length === 0) {
     return (
       <div className="text-center py-16">
@@ -451,6 +471,21 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
 
                 {/* Reorder controls */}
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => startPlayback(item)}
+                    disabled={isBusy}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30 ${
+                      item.play_started_at
+                        ? 'bg-pink-500/20 hover:bg-pink-500/30'
+                        : 'bg-white/5 hover:bg-pink-500/20'
+                    }`}
+                    title={item.play_started_at ? 'Stop playback / voting' : 'Play — starts 30s voting countdown'}
+                  >
+                    {item.play_started_at
+                      ? <Square size={12} className="text-pink-400" />
+                      : <Play size={14} className="text-pink-400" />
+                    }
+                  </button>
                   <button
                     onClick={() => moveToTop(item)}
                     disabled={isBusy || isFirst}

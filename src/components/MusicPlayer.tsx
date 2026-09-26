@@ -16,6 +16,7 @@ interface UploadItem {
   queue_position: number;
   is_paid: boolean;
   created_at: string;
+  play_started_at: string | null;
 }
 
 interface ChartEntry {
@@ -35,6 +36,9 @@ const SKIP_TIERS = [
   { id: 'skip_15', name: 'Near Front', price: 15, desc: 'Skip to the top 15% of the queue.', accent: '#f59e0b', icon: ChevronUp },
   { id: 'spot_1', name: 'Spot 1', price: 40, desc: 'Jump to the absolute front.', accent: '#ef4444', icon: Crown },
 ];
+
+const PLAY_GRACE = 30;   // seconds after play button before voting opens
+const VOTE_WINDOW = 60;  // seconds of voting
 
 function getOrCreateVoterId(): string {
   const KEY = '8pm_voter_id';
@@ -58,12 +62,13 @@ export default function MusicPlayer() {
   const [likes, setLikes] = useState(0);
   const [dislikes, setDislikes] = useState(0);
   const [userVote, setUserVote] = useState<'like' | 'dislike' | null>(null);
-  const [voteCountdown, setVoteCountdown] = useState(60);
   const [voteBurst, setVoteBurst] = useState<string | null>(null);
   const [chart, setChart] = useState<ChartEntry[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
+  const [now, setNow] = useState(Date.now());
 
   const voterIdRef = useRef(getOrCreateVoterId());
+  const lastVoteSongIdRef = useRef<string | null>(null);
 
   const fetchQueue = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -103,27 +108,54 @@ export default function MusicPlayer() {
     fetchChart();
   }, [fetchQueue, fetchChart]);
 
-  // Auto-refresh queue every 10 seconds
+  // Auto-refresh queue every 5 seconds for responsive voting sync
   useEffect(() => {
-    const interval = setInterval(fetchQueue, 10000);
+    const interval = setInterval(fetchQueue, 5000);
     return () => clearInterval(interval);
   }, [fetchQueue]);
 
-  // The first song in the queue is the "now playing" song for voting
-  const nowPlaying = songs[0];
-
-  // Fetch vote counts when now-playing song changes
+  // Tick every second for countdown
   useEffect(() => {
-    if (!nowPlaying) return;
+    const ticker = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(ticker);
+  }, []);
+
+  // Find the song the admin started playing
+  const playingSong = songs.find(s => s.play_started_at);
+
+  // Compute voting phase from server timestamp
+  const playStartMs = playingSong ? new Date(playingSong.play_started_at!).getTime() : 0;
+  const elapsedSec = playingSong ? Math.floor((now - playStartMs) / 1000) : 0;
+
+  type VotePhase = 'idle' | 'grace' | 'voting' | 'closed';
+  let phase: VotePhase = 'idle';
+  let countdown = 0;
+
+  if (playingSong) {
+    if (elapsedSec < PLAY_GRACE) {
+      phase = 'grace';
+      countdown = PLAY_GRACE - elapsedSec;
+    } else if (elapsedSec < PLAY_GRACE + VOTE_WINDOW) {
+      phase = 'voting';
+      countdown = VOTE_WINDOW - (elapsedSec - PLAY_GRACE);
+    } else {
+      phase = 'closed';
+    }
+  }
+
+  // Fetch vote counts when the playing song changes
+  useEffect(() => {
+    if (!playingSong || playingSong.id === lastVoteSongIdRef.current) return;
+    lastVoteSongIdRef.current = playingSong.id;
+
     setLikes(0);
     setDislikes(0);
     setUserVote(null);
-    setVoteCountdown(60);
 
     const fetchVotes = async () => {
       try {
         const data = await fetchEdgeJson<{ likes: number; dislikes: number }>(
-          `song-vote?upload_id=${nowPlaying.id}`
+          `song-vote?upload_id=${playingSong.id}`
         );
         setLikes(data.likes || 0);
         setDislikes(data.dislikes || 0);
@@ -134,7 +166,7 @@ export default function MusicPlayer() {
         const { data: existing } = await supabase
           .from('song_votes')
           .select('vote_type')
-          .eq('upload_id', nowPlaying.id)
+          .eq('upload_id', playingSong.id)
           .eq('voter_id', voterIdRef.current)
           .maybeSingle();
         if (existing) setUserVote(existing.vote_type as 'like' | 'dislike');
@@ -143,27 +175,13 @@ export default function MusicPlayer() {
       }
     };
     fetchVotes();
-  }, [nowPlaying?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 60-second countdown timer for voting
-  useEffect(() => {
-    if (!nowPlaying || voteCountdown <= 0) return;
-    const timer = setInterval(() => {
-      setVoteCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [nowPlaying?.id, voteCountdown]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [playingSong?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleVote = async (voteType: 'like' | 'dislike') => {
-    if (!nowPlaying || voteCountdown === 0) return;
+    if (!playingSong || phase !== 'voting') return;
 
     const prevVote = userVote;
+    // Optimistic update
     if (prevVote === voteType) {
       if (voteType === 'like') setLikes(l => l - 1);
       else setDislikes(d => d - 1);
@@ -171,6 +189,7 @@ export default function MusicPlayer() {
     } else if (prevVote === null) {
       if (voteType === 'like') setLikes(l => l + 1);
       else setDislikes(d => d + 1);
+      setUserVote(voteType);
     } else {
       if (voteType === 'like') {
         setLikes(l => l + 1);
@@ -179,8 +198,8 @@ export default function MusicPlayer() {
         setDislikes(d => d + 1);
         setLikes(l => l - 1);
       }
+      setUserVote(voteType);
     }
-    setUserVote(voteType === prevVote ? null : voteType);
 
     setVoteBurst(voteType === 'like' ? 'LIKE' : 'DISLIKE');
     setTimeout(() => setVoteBurst(null), 1200);
@@ -190,7 +209,7 @@ export default function MusicPlayer() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          upload_id: nowPlaying.id,
+          upload_id: playingSong.id,
           vote_type: voteType,
           voter_id: voterIdRef.current,
         }),
@@ -199,6 +218,7 @@ export default function MusicPlayer() {
       setDislikes(data.dislikes || 0);
       fetchChart();
     } catch {
+      // Revert optimistic update on error
       if (prevVote === voteType) {
         if (voteType === 'like') setLikes(l => l + 1);
         else setDislikes(d => d + 1);
@@ -287,8 +307,8 @@ export default function MusicPlayer() {
           </div>
         ) : (
           <>
-            {/* Voting section — for the song at the front of the queue */}
-            {nowPlaying && (
+            {/* Voting section — driven by admin's play button */}
+            {playingSong && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 mb-8 relative overflow-hidden">
                 {voteBurst && (
                   <div
@@ -310,33 +330,58 @@ export default function MusicPlayer() {
                 )}
 
                 <div className="text-center mb-4">
-                  <p className="text-xs tracking-widest uppercase text-zinc-600 mb-1">Now Playing — Vote Now</p>
-                  <h2 className="font-black text-lg text-white truncate">{nowPlaying.song_name}</h2>
-                  <p className="text-sm text-zinc-400 mt-0.5">{nowPlaying.artist_name}</p>
-                  {voteCountdown > 0 ? (
+                  <p className="text-xs tracking-widest uppercase text-zinc-600 mb-1">
+                    {phase === 'grace' ? 'Get Ready — Voting Opens Soon' : phase === 'voting' ? 'Now Playing — Vote Now' : 'Voting Closed'}
+                  </p>
+                  <h2 className="font-black text-lg text-white truncate">{playingSong.song_name}</h2>
+                  <p className="text-sm text-zinc-400 mt-0.5">{playingSong.artist_name}</p>
+
+                  {phase === 'grace' && (
+                    <div className="mt-3">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-pink-500/10 border border-pink-500/30">
+                        <span className="text-sm text-zinc-400">Voting opens in</span>
+                        <span className="font-mono font-black text-2xl text-pink-400" style={{ animation: 'votePop 1s ease infinite' }}>
+                          {countdown}
+                        </span>
+                        <span className="text-sm text-zinc-400">s</span>
+                      </div>
+                      {/* Progress bar for grace period */}
+                      <div className="mt-3 h-1.5 rounded-full bg-black/40 overflow-hidden max-w-xs mx-auto">
+                        <div
+                          className="h-full bg-gradient-to-r from-pink-500 to-pink-400 transition-all duration-1000"
+                          style={{ width: `${((PLAY_GRACE - countdown) / PLAY_GRACE) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {phase === 'voting' && (
                     <p className="text-sm text-zinc-400 mt-2">
-                      <span className="font-mono font-bold" style={{ color: voteCountdown <= 10 ? '#ec4899' : '#2dd4bf' }}>
-                        {voteCountdown}
+                      <span className="font-mono font-bold" style={{ color: countdown <= 10 ? '#ec4899' : '#2dd4bf' }}>
+                        {countdown}
                       </span>
                       <span className="text-zinc-600"> seconds left to vote</span>
                     </p>
-                  ) : (
+                  )}
+
+                  {phase === 'closed' && (
                     <p className="text-sm text-zinc-600 mt-2">Voting closed for this song</p>
                   )}
                 </div>
 
-                <div className="flex items-center justify-center gap-8">
-                  {/* Like button */}
+                {/* Vote buttons — disabled during grace and closed phases */}
+                <div className={`flex items-center justify-center gap-8 ${phase !== 'voting' ? 'opacity-40 pointer-events-none' : ''}`}>
+                  {/* Like button with hover glow */}
                   <button
                     onClick={() => handleVote('like')}
-                    disabled={voteCountdown === 0}
-                    className="flex flex-col items-center gap-2 group disabled:opacity-30"
+                    disabled={phase !== 'voting'}
+                    className="flex flex-col items-center gap-2 group"
                     aria-label="Vote like"
                   >
                     <div
-                      className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
-                        userVote === 'like' ? 'vote-btn-active-pink' : 'vote-btn-idle'
-                      }`}
+                      className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 vote-btn-idle ${
+                        userVote === 'like' ? 'vote-btn-active-pink' : ''
+                      } ${userVote === 'like' ? '' : 'vote-glow-pink'}`}
                       style={{
                         borderColor: userVote === 'like' ? '#ec4899' : 'rgba(236,72,153,0.3)',
                         background: userVote === 'like' ? 'rgba(236,72,153,0.15)' : 'rgba(0,0,0,0.4)',
@@ -358,17 +403,17 @@ export default function MusicPlayer() {
                     </span>
                   </button>
 
-                  {/* Dislike button */}
+                  {/* Dislike button with hover glow */}
                   <button
                     onClick={() => handleVote('dislike')}
-                    disabled={voteCountdown === 0}
-                    className="flex flex-col items-center gap-2 group disabled:opacity-30"
+                    disabled={phase !== 'voting'}
+                    className="flex flex-col items-center gap-2 group"
                     aria-label="Vote dislike"
                   >
                     <div
-                      className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
-                        userVote === 'dislike' ? 'vote-btn-active-teal' : 'vote-btn-idle'
-                      }`}
+                      className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 vote-btn-idle ${
+                        userVote === 'dislike' ? 'vote-btn-active-teal' : ''
+                      } ${userVote === 'dislike' ? '' : 'vote-glow-teal'}`}
                       style={{
                         borderColor: userVote === 'dislike' ? '#2dd4bf' : 'rgba(45,212,191,0.3)',
                         background: userVote === 'dislike' ? 'rgba(45,212,191,0.15)' : 'rgba(0,0,0,0.4)',
@@ -390,28 +435,30 @@ export default function MusicPlayer() {
                 </div>
 
                 {/* Vote bar */}
-                <div className="mt-5">
-                  <div className="flex items-center justify-between text-xs text-zinc-500 mb-1.5">
-                    <span style={{ color: '#ec4899' }}>{likes} likes</span>
-                    <span style={{ color: '#2dd4bf' }}>{dislikes} dislikes</span>
+                {(phase === 'voting' || phase === 'closed') && (
+                  <div className="mt-5">
+                    <div className="flex items-center justify-between text-xs text-zinc-500 mb-1.5">
+                      <span style={{ color: '#ec4899' }}>{likes} likes</span>
+                      <span style={{ color: '#2dd4bf' }}>{dislikes} dislikes</span>
+                    </div>
+                    <div className="h-2 rounded-full overflow-hidden flex bg-black/40">
+                      <div
+                        className="h-full transition-all duration-500"
+                        style={{
+                          width: `${(likes / Math.max(1, likes + dislikes)) * 100}%`,
+                          background: 'linear-gradient(90deg, #ec4899, #f472b6)',
+                        }}
+                      />
+                      <div
+                        className="h-full transition-all duration-500"
+                        style={{
+                          width: `${(dislikes / Math.max(1, likes + dislikes)) * 100}%`,
+                          background: 'linear-gradient(90deg, #2dd4bf, #5eead4)',
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 rounded-full overflow-hidden flex bg-black/40">
-                    <div
-                      className="h-full transition-all duration-500"
-                      style={{
-                        width: `${(likes / Math.max(1, likes + dislikes)) * 100}%`,
-                        background: 'linear-gradient(90deg, #ec4899, #f472b6)',
-                      }}
-                    />
-                    <div
-                      className="h-full transition-all duration-500"
-                      style={{
-                        width: `${(dislikes / Math.max(1, likes + dislikes)) * 100}%`,
-                        background: 'linear-gradient(90deg, #2dd4bf, #5eead4)',
-                      }}
-                    />
-                  </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -495,12 +542,26 @@ export default function MusicPlayer() {
                                       }))
                                     }
                                     disabled={isSkipping}
-                                    className={`flex flex-col items-center gap-1 rounded-xl p-2.5 transition-all disabled:opacity-50 ${
-                                      isSelected ? 'scale-[1.02]' : 'hover:scale-[1.01]'
+                                    className={`skip-option-hover flex flex-col items-center gap-1 rounded-xl p-2.5 transition-all disabled:opacity-50 ${
+                                      isSelected ? 'scale-[1.02]' : ''
                                     }`}
                                     style={{
                                       background: isSelected ? `${tier.accent}20` : `${tier.accent}08`,
                                       border: `1px solid ${isSelected ? tier.accent : `${tier.accent}25`}`,
+                                    }}
+                                    onMouseEnter={e => {
+                                      if (!isSelected) {
+                                        e.currentTarget.style.background = `${tier.accent}15`;
+                                        e.currentTarget.style.borderColor = `${tier.accent}50`;
+                                        e.currentTarget.style.boxShadow = `0 0 16px ${tier.accent}40`;
+                                      }
+                                    }}
+                                    onMouseLeave={e => {
+                                      if (!isSelected) {
+                                        e.currentTarget.style.background = `${tier.accent}08`;
+                                        e.currentTarget.style.borderColor = `${tier.accent}25`;
+                                        e.currentTarget.style.boxShadow = '';
+                                      }
                                     }}
                                   >
                                     <Icon size={14} style={{ color: tier.accent }} />
