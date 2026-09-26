@@ -309,6 +309,16 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
 
   const sorted = [...items].sort((a, b) => a.queue_position - b.queue_position);
 
+  const clearSkip = async (item: UploadItem) => {
+    setBusy(p => ({ ...p, [item.id]: true }));
+    await supabase
+      .from('music_uploads')
+      .update({ tier: 'free', is_paid: false })
+      .eq('id', item.id);
+    setBusy(p => ({ ...p, [item.id]: false }));
+    onRefresh();
+  };
+
   const swapPositions = async (a: UploadItem, b: UploadItem) => {
     setBusy(p => ({ ...p, [a.id]: true, [b.id]: true }));
     const [r1, r2] = await Promise.all([
@@ -379,13 +389,21 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
                     <span className="text-sm font-semibold text-white truncate">{item.song_name}</span>
                     {item.is_paid && (
                       <span
-                        className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                        className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 inline-flex items-center gap-1"
                         style={{
                           background: `${TIER_COLORS[item.tier] ?? '#71717a'}18`,
                           color: TIER_COLORS[item.tier] ?? '#a1a1aa',
                         }}
                       >
                         {item.tier === 'spot_1' ? 'Spot 1' : item.tier === 'skip_15' ? 'Near Front' : item.tier === 'skip_7' ? 'Skip Ahead' : 'Priority'}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); clearSkip(item); }}
+                          disabled={isBusy}
+                          className="ml-0.5 hover:opacity-70 transition-opacity disabled:opacity-30"
+                          title="Clear skip status"
+                        >
+                          <X size={10} />
+                        </button>
                       </span>
                     )}
                     {item.is_ai_music && (
@@ -537,6 +555,16 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => { if (authed) load(); }, [authed]);
+
+  // Auto-refresh queue every 10 seconds
+  useEffect(() => {
+    if (!authed) return;
+    const interval = setInterval(async () => {
+      const q = await supabase.from('music_uploads').select('*').order('queue_position', { ascending: true });
+      if (q.data) setQueueItems(q.data as UploadItem[]);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [authed]);
 
   const logout = () => {
     sessionStorage.removeItem('8pm_admin');

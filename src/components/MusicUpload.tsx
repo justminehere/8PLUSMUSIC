@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, CheckCircle, Music, Link2, User, Instagram, ChevronRight, Play, Phone, Calendar, FileText, StickyNote } from 'lucide-react';
+import { Upload, CheckCircle, Music, Link2, User, Instagram, ChevronRight, Phone, Calendar, FileText, StickyNote } from 'lucide-react';
 import { fetchEdgeJson, isSupabaseConfigured } from '../lib/fetchEdge';
 import ArcadeBackButton from './ArcadeBackButton';
 
@@ -196,10 +196,6 @@ export default function MusicUpload() {
         <div className="mb-10 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-semibold tracking-widest uppercase text-zinc-400">Current Queue</h3>
-            <a href="/player" className="inline-flex items-center gap-1.5 text-teal-400 hover:text-teal-300 text-xs transition-colors">
-              <Play size={12} />
-              Play songs
-            </a>
           </div>
           <p className="text-3xl font-black text-white">
             {queueLoading ? '...' : queueTotal}
