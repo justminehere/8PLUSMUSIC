@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { playBlip, playArcadeCoin, startAmbient, stopAmbient } from '../lib/arcadeSound';
+import { playBlip, playArcadeCoin, playAtariStart, startAmbient, stopAmbient } from '../lib/arcadeSound';
 
 interface NavItem {
   label: string;
@@ -51,17 +51,15 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
     return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }, []);
 
-  const toggleSound = () => {
-    setSoundOn(prev => {
-      const next = !prev;
-      if (next && !prefersReducedMotion) {
-        playArcadeCoin();
-        startAmbient();
-      } else {
-        stopAmbient();
-      }
-      return next;
-    });
+  const toggleSound = async () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    if (next && !prefersReducedMotion) {
+      await playAtariStart();
+      startAmbient();
+    } else {
+      stopAmbient();
+    }
   };
 
   const handleClick = useCallback((item: NavItem, idx: number) => {
