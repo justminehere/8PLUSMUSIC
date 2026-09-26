@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 
 function extractYouTubeId(url: string): string | null {
   try {
@@ -17,19 +17,18 @@ export function toEmbedUrl(url: string, autoplay: boolean): string | null {
   try {
     const u = new URL(url);
     const host = u.hostname.replace('www.', '');
-    const ap = autoplay ? 'autoplay=1&mute=1&' : '';
 
     if (host === 'youtube.com' && u.pathname === '/watch') {
       const id = u.searchParams.get('v');
-      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1&rel=0&modestbranding=1&enablejsapi=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}` : null;
     }
     if (host === 'youtu.be') {
       const id = u.pathname.slice(1);
-      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1&rel=0&modestbranding=1&enablejsapi=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}` : null;
     }
     if (host === 'youtube.com' && u.pathname.startsWith('/shorts/')) {
       const id = u.pathname.split('/')[2];
-      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1&rel=0&modestbranding=1&enablejsapi=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}` : null;
     }
 
     if (host === 'soundcloud.com') {
@@ -57,117 +56,32 @@ interface PlayerProps {
   onPlaying?: () => void;
 }
 
-export function YouTubeAutoUnmutePlayer({ videoId, autoplay, onComplete, onPlaying }: PlayerProps) {
+export function YouTubeAutoUnmutePlayer({ videoId, onComplete }: PlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const unmuteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const onCompleteRef = useRef(onComplete);
-  const onPlayingRef = useRef(onPlaying);
-  const hasFiredCompleteRef = useRef(false);
-
-  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
-  useEffect(() => { onPlayingRef.current = onPlaying; }, [onPlaying]);
-
-  // Listen for YouTube state change via postMessage
-  useEffect(() => {
-    hasFiredCompleteRef.current = false;
-
-    const handler = (event: MessageEvent) => {
-      if (event.origin !== 'https://www.youtube.com') return;
-      try {
-        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (data.event !== 'onStateChange' || !data.info) return;
-
-        // 1 = playing, 0 = ended
-        if (data.info === 1 && onPlayingRef.current) {
-          onPlayingRef.current();
-        }
-        if (data.info === 0 && !hasFiredCompleteRef.current) {
-          hasFiredCompleteRef.current = true;
-          if (onCompleteRef.current) onCompleteRef.current();
-        }
-      } catch {
-        // ignore malformed messages
-      }
-    };
-
-    window.addEventListener('message', handler);
-    return () => {
-      window.removeEventListener('message', handler);
-      if (unmuteTimerRef.current) {
-        clearInterval(unmuteTimerRef.current);
-        unmuteTimerRef.current = null;
-      }
-    };
-  }, [videoId]);
-
-  // Send "listen" command to the iframe so it posts state changes
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe || !iframe.contentWindow) return;
-
-    const sendListen = () => {
-      try {
-        iframe.contentWindow!.postMessage(
-          JSON.stringify({ event: 'listening' }),
-          'https://www.youtube.com'
-        );
-      } catch {
-        // ignore
-      }
-    };
-
-    // YouTube needs repeated "listening" pings until it responds
-    sendListen();
-    const timer = setInterval(sendListen, 1000);
-    const stopTimer = setTimeout(() => clearInterval(timer), 8000);
-
-    // Attempt to unmute after a delay (autoplay starts muted)
-    if (autoplay) {
-      unmuteTimerRef.current = setInterval(() => {
-        try {
-          iframe.contentWindow!.postMessage(
-            JSON.stringify({ event: 'command', func: 'unMute', args: [] }),
-            'https://www.youtube.com'
-          );
-          iframe.contentWindow!.postMessage(
-            JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }),
-            'https://www.youtube.com'
-          );
-        } catch {
-          // ignore
-        }
-      }, 800);
-      setTimeout(() => {
-        if (unmuteTimerRef.current) {
-          clearInterval(unmuteTimerRef.current);
-          unmuteTimerRef.current = null;
-        }
-      }, 6000);
-    }
-
-    return () => {
-      clearInterval(timer);
-      clearTimeout(stopTimer);
-      if (unmuteTimerRef.current) {
-        clearInterval(unmuteTimerRef.current);
-        unmuteTimerRef.current = null;
-      }
-    };
-  }, [videoId, autoplay]);
-
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?${autoplay ? 'autoplay=1&mute=1&' : ''}controls=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0`;
 
   return (
-    <iframe
-      ref={iframeRef}
-      key={videoId}
-      src={embedUrl}
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-      allowFullScreen
-      frameBorder="0"
-      className="w-full rounded-lg"
-      style={{ height: 200 }}
-    />
+    <div>
+      <iframe
+        ref={iframeRef}
+        key={videoId}
+        src={embedUrl}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        frameBorder="0"
+        className="w-full rounded-lg"
+        style={{ height: 200 }}
+        title="YouTube video player"
+      />
+      {onComplete && (
+        <button
+          onClick={onComplete}
+          className="mt-3 w-full py-2.5 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-300 text-sm font-bold hover:bg-teal-500/20 transition-colors"
+        >
+          I've finished listening — unlock voting
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -225,6 +139,7 @@ export function EmbeddedPlayer({ url, autoplay, onComplete, onPlaying }: Embedde
       scrolling="no"
       className="w-full rounded-lg"
       style={{ height: isSoundCloud ? 166 : isSpotify ? 80 : 64 }}
+      title="Audio player"
     />
   );
 }
