@@ -563,6 +563,39 @@ body {
   box-shadow: 0 0 12px rgba(236, 72, 153, 0.4);
 }
 
+/* ── Arcade back button ───────────────────────────── */
+.arcade-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 10px 18px;
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  background: rgba(0, 0, 0, 0.6);
+  transition: color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, text-shadow 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.arcade-back-btn:hover {
+  color: #ec4899;
+  border-color: rgba(236, 72, 153, 0.7);
+  text-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
+  transform: translateX(-3px);
+  box-shadow: 0 0 12px rgba(45, 212, 191, 0.25);
+}
+
+.arcade-back-btn:active {
+  transform: translateX(-1px) scale(0.97);
+}
+
+.arcade-back-btn .arcade-selector {
+  font-size: 10px;
+  color: #2dd4bf;
+}
+
 /* ── Arcade divider ───────────────────────────────── */
 .arcade-divider {
   height: 2px;
@@ -682,17 +715,20 @@ body {
 @keyframes bunnyDrop {
   0% {
     opacity: 0;
-    transform: translateY(-120px) scale(0.5);
+    transform: translateY(-200px) scale(0.3) rotate(-8deg);
   }
-  50% {
+  40% {
     opacity: 1;
-    transform: translateY(10px) scale(1.08);
+    transform: translateY(15px) scale(1.12) rotate(3deg);
+  }
+  55% {
+    transform: translateY(-8px) scale(0.95) rotate(-2deg);
   }
   70% {
-    transform: translateY(-5px) scale(0.98);
+    transform: translateY(5px) scale(1.04) rotate(1deg);
   }
   85% {
-    transform: translateY(3px) scale(1.02);
+    transform: translateY(-2px) scale(0.99) rotate(0deg);
   }
   100% {
     opacity: 1;
@@ -795,6 +831,63 @@ body {
   }
 }
 
+/* Power-on CRT flash — screen fills white then collapses to a line */
+.arcade-power-flash {
+  background: #fff;
+  animation: powerFlash 0.6s ease-out forwards;
+}
+
+@keyframes powerFlash {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.001);
+  transform-origin: center;
+  }
+  10% {
+    opacity: 0.9;
+    transform: scaleY(1);
+  }
+  20% {
+    opacity: 0.7;
+    transform: scaleY(1);
+  }
+  60% {
+    opacity: 0.3;
+    transform: scaleY(0.01);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(0.001);
+  }
+}
+
+/* Glitch sweep — horizontal band sweeps down on entry */
+.arcade-glitch-sweep {
+  animation: glitchSweep 0.8s ease-out forwards;
+}
+
+@keyframes glitchSweep {
+  0% {
+    opacity: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(45, 212, 191, 0.15) 50%, transparent 100%);
+    background-size: 100% 200px;
+    background-position: 0 -200px;
+    background-repeat: no-repeat;
+  }
+  20% {
+    opacity: 1;
+    background-position: 0 20vh;
+  }
+  50% {
+    opacity: 0.6;
+    background-position: 0 60vh;
+  }
+  100% {
+    opacity: 0;
+    background-position: 0 120vh;
+  }
+}
+
 /* ── Reduced motion additions ────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .arcade-nav-drop,
@@ -805,7 +898,9 @@ body {
   .arcade-slide-up,
   .arcade-social-drop,
   .arcade-entry-burst,
-  .arcade-nav-glow {
+  .arcade-nav-glow,
+  .arcade-power-flash,
+  .arcade-glitch-sweep {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

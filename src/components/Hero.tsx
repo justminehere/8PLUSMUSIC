@@ -18,13 +18,21 @@ export default function Hero() {
 
   const [titleText, setTitleText] = useState(prefersReducedMotion ? '8PLUSMUSIC.COM' : '');
   const [rapText, setRapText] = useState(prefersReducedMotion ? 'RAP' : '');
+  const [showFlash, setShowFlash] = useState(!prefersReducedMotion);
+
+  useEffect(() => {
+    if (!prefersReducedMotion) {
+      const t = setTimeout(() => setShowFlash(false), 600);
+      return () => clearTimeout(t);
+    }
+  }, [prefersReducedMotion]);
 
   useEffect(() => {
     if (prefersReducedMotion) return;
 
     const fullTitle = '8PLUSMUSIC.COM';
     let frame = 0;
-    const totalFrames = 24;
+    const totalFrames = 30;
 
     const titleInterval = setInterval(() => {
       frame++;
@@ -43,12 +51,12 @@ export default function Hero() {
         })
         .join('');
       setTitleText(scrambled);
-    }, 50);
+    }, 45);
 
     const rapTimeout = setTimeout(() => {
       const fullRap = 'RAP';
       let rapFrame = 0;
-      const rapTotal = 12;
+      const rapTotal = 16;
       const rapInterval = setInterval(() => {
         rapFrame++;
         if (rapFrame >= rapTotal) {
@@ -62,8 +70,8 @@ export default function Hero() {
           .map((ch, i) => (i < revealed ? ch : SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)]))
           .join('');
         setRapText(scrambled);
-      }, 60);
-    }, 400);
+      }, 55);
+    }, 500);
 
     return () => {
       clearInterval(titleInterval);
@@ -73,6 +81,16 @@ export default function Hero() {
 
   return (
     <section className="relative min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-black px-6 pt-8 pb-20">
+      {/* Power-on CRT flash */}
+      {showFlash && (
+        <div className="arcade-power-flash fixed inset-0 z-50 pointer-events-none" />
+      )}
+
+      {/* Glitch sweep on entry */}
+      {!prefersReducedMotion && (
+        <div className="arcade-glitch-sweep fixed inset-0 z-40 pointer-events-none" />
+      )}
+
       {/* Ambient glow blobs */}
       <div className="absolute top-1/3 left-1/4 w-96 h-96 rounded-full bg-pink-500 opacity-10 blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/3 right-1/4 w-96 h-96 rounded-full bg-teal-400 opacity-10 blur-3xl pointer-events-none" />

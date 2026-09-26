@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Upload, CheckCircle, Music, Link2, User, Instagram, ChevronRight, ArrowLeft, Play } from 'lucide-react';
+import { Upload, CheckCircle, Music, Link2, User, Instagram, ChevronRight, Play } from 'lucide-react';
 import { fetchEdgeJson, isSupabaseConfigured } from '../lib/fetchEdge';
+import ArcadeBackButton from './ArcadeBackButton';
 
 interface UploadItem {
   id: string;
@@ -158,10 +159,7 @@ export default function MusicUpload() {
 
       <div className="relative z-10 max-w-2xl mx-auto px-6 py-16">
         {/* Back link */}
-        <a href="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-white transition-colors text-sm mb-8">
-          <ArrowLeft size={16} />
-          Back to 8PlusMusic
-        </a>
+        <ArcadeBackButton />
 
         {/* Logo */}
         <div className="text-center mb-12">

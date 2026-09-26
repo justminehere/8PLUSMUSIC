@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { EPS } from '../lib/tracks';
 import { edgeFunctionUrl } from '../lib/fetchEdge';
 import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp } from 'lucide-react';
+import ArcadeBackButton from './ArcadeBackButton';
 
 const ADMIN_PASSWORD = 'Jamilujuhudbu1!';
 const ADMIN_EMAIL    = 'bunevd@gmail.com';
@@ -130,9 +131,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
         </form>
 
         <div className="mt-6 text-center">
-          <a href="/" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors tracking-widest uppercase">
-            ← Back to site
-          </a>
+          <ArcadeBackButton label="BACK TO SITE" />
         </div>
       </div>
     </div>
