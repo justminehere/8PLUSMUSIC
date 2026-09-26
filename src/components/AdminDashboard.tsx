@@ -64,6 +64,12 @@ interface UploadItem {
   queue_position: number;
   is_paid: boolean;
   created_at: string;
+  real_name: string | null;
+  phone_number: string | null;
+  tiktok_link: string | null;
+  production_year: string | null;
+  lyrics_writer: string | null;
+  note_for_8plus: string | null;
 }
 
 type Tab = 'links' | 'contacts' | 'chat' | 'queue';
@@ -280,9 +286,26 @@ function TrackLinksManager({ trackLinks, onRefresh }: { trackLinks: TrackLink[];
 }
 
 // ── Music Queue Manager ─────────────────────────────────────────────────────
+function DetailField({ label, value, link }: { label: string; value: string | null; link?: string }) {
+  if (!value) return null;
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs tracking-widest uppercase text-zinc-600">{label}</span>
+      {link ? (
+        <a href={link} target="_blank" rel="noopener noreferrer" className="text-sm text-teal-400 hover:text-teal-300 transition-colors break-all">
+          {value}
+        </a>
+      ) : (
+        <span className="text-sm text-zinc-300 break-words">{value}</span>
+      )}
+    </div>
+  );
+}
+
 function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefresh: () => void }) {
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const sorted = [...items].sort((a, b) => a.queue_position - b.queue_position);
 
@@ -343,112 +366,141 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
           const isLast = i === sorted.length - 1;
 
           return (
-            <div key={item.id} className="px-5 py-4 flex items-center gap-3 hover:bg-white/[0.02] transition-colors">
-              {/* Position number */}
-              <span className="text-zinc-600 font-mono text-sm w-8 text-center flex-shrink-0">
-                {i + 1}
-              </span>
+            <div key={item.id} className="hover:bg-white/[0.02] transition-colors">
+              <div className="px-5 py-4 flex items-center gap-3">
+                {/* Position number */}
+                <span className="text-zinc-600 font-mono text-sm w-8 text-center flex-shrink-0">
+                  {i + 1}
+                </span>
 
-              {/* Song info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-white truncate">{item.song_name}</span>
-                  {item.is_paid && (
-                    <span
-                      className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                      style={{
-                        background: `${TIER_COLORS[item.tier] ?? '#71717a'}18`,
-                        color: TIER_COLORS[item.tier] ?? '#a1a1aa',
-                      }}
-                    >
-                      {item.tier === 'spot_1' ? 'Spot 1' : item.tier === 'skip_15' ? 'Near Front' : item.tier === 'skip_7' ? 'Skip Ahead' : 'Priority'}
-                    </span>
-                  )}
-                  {item.is_ai_music && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-zinc-400 flex-shrink-0">
-                      AI{item.ai_type === 'hybrid' ? ' (Hybrid)' : ''}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-zinc-500">{item.artist_name}</span>
-                  {item.instagram_handle && (
+                {/* Song info */}
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpanded(expanded === item.id ? null : item.id)}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-white truncate">{item.song_name}</span>
+                    {item.is_paid && (
+                      <span
+                        className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                        style={{
+                          background: `${TIER_COLORS[item.tier] ?? '#71717a'}18`,
+                          color: TIER_COLORS[item.tier] ?? '#a1a1aa',
+                        }}
+                      >
+                        {item.tier === 'spot_1' ? 'Spot 1' : item.tier === 'skip_15' ? 'Near Front' : item.tier === 'skip_7' ? 'Skip Ahead' : 'Priority'}
+                      </span>
+                    )}
+                    {item.is_ai_music && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-zinc-400 flex-shrink-0">
+                        {item.ai_type === 'hybrid' ? 'Hybrid AI' : 'Fully AI'}
+                      </span>
+                    )}
+                    {item.production_year && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-zinc-500 flex-shrink-0">
+                        {item.production_year}
+                      </span>
+                    )}
+                    <X
+                      size={12}
+                      className={`text-zinc-600 transition-transform ${expanded === item.id ? 'rotate-0' : '-rotate-45'}`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-zinc-500">{item.artist_name}</span>
+                    {item.real_name && (
+                      <span className="text-xs text-zinc-600">({item.real_name})</span>
+                    )}
+                    {item.instagram_handle && (
+                      <a
+                        href={`https://instagram.com/${item.instagram_handle.replace('@', '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-pink-400 hover:text-pink-300 transition-colors"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {item.instagram_handle}
+                      </a>
+                    )}
                     <a
-                      href={`https://instagram.com/${item.instagram_handle.replace('@', '')}`}
+                      href={item.song_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-pink-400 hover:text-pink-300 transition-colors"
+                      className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
                       onClick={e => e.stopPropagation()}
                     >
-                      {item.instagram_handle}
+                      Open link
                     </a>
-                  )}
-                  <a
-                    href={item.song_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    Open link
-                  </a>
+                  </div>
                 </div>
-              </div>
 
-              {/* Reorder controls */}
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button
-                  onClick={() => moveToTop(item)}
-                  disabled={isBusy || isFirst}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-teal-500/20 transition-all disabled:opacity-20"
-                  title="Move to top (play next)"
-                >
-                  <ChevronsUp size={14} className="text-teal-400" />
-                </button>
-                <button
-                  onClick={() => !isFirst && swapPositions(item, sorted[i - 1])}
-                  disabled={isBusy || isFirst}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 transition-all disabled:opacity-20"
-                  title="Move up"
-                >
-                  <ArrowUp size={14} className="text-zinc-400" />
-                </button>
-                <button
-                  onClick={() => !isLast && swapPositions(item, sorted[i + 1])}
-                  disabled={isBusy || isLast}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 transition-all disabled:opacity-20"
-                  title="Move down"
-                >
-                  <ArrowDown size={14} className="text-zinc-400" />
-                </button>
-              </div>
-
-              {/* Delete */}
-              {confirmId === item.id ? (
+                {/* Reorder controls */}
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
-                    onClick={() => handleDelete(item)}
-                    disabled={isBusy}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
+                    onClick={() => moveToTop(item)}
+                    disabled={isBusy || isFirst}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-teal-500/20 transition-all disabled:opacity-20"
+                    title="Move to top (play next)"
                   >
-                    {isBusy ? 'Deleting...' : 'Confirm'}
+                    <ChevronsUp size={14} className="text-teal-400" />
                   </button>
                   <button
-                    onClick={() => setConfirmId(null)}
-                    className="px-2 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white transition-colors"
+                    onClick={() => !isFirst && swapPositions(item, sorted[i - 1])}
+                    disabled={isBusy || isFirst}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 transition-all disabled:opacity-20"
+                    title="Move up"
                   >
-                    Cancel
+                    <ArrowUp size={14} className="text-zinc-400" />
+                  </button>
+                  <button
+                    onClick={() => !isLast && swapPositions(item, sorted[i + 1])}
+                    disabled={isBusy || isLast}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 transition-all disabled:opacity-20"
+                    title="Move down"
+                  >
+                    <ArrowDown size={14} className="text-zinc-400" />
                   </button>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setConfirmId(item.id)}
-                  disabled={isBusy}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-red-500/20 transition-all disabled:opacity-30 flex-shrink-0"
-                  title="Delete song"
-                >
-                  <Trash2 size={14} className="text-zinc-500 hover:text-red-400 transition-colors" />
-                </button>
+
+                {/* Delete */}
+                {confirmId === item.id ? (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => handleDelete(item)}
+                      disabled={isBusy}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
+                    >
+                      {isBusy ? 'Deleting...' : 'Confirm'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmId(null)}
+                      className="px-2 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmId(item.id)}
+                    disabled={isBusy}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-red-500/20 transition-all disabled:opacity-30 flex-shrink-0"
+                    title="Delete song"
+                  >
+                    <Trash2 size={14} className="text-zinc-500 hover:text-red-400 transition-colors" />
+                  </button>
+                )}
+              </div>
+
+              {/* Expanded details */}
+              {expanded === item.id && (
+                <div className="px-5 pb-5 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <DetailField label="Real Name / Nickname" value={item.real_name} />
+                  <DetailField label="Phone Number" value={item.phone_number} />
+                  <DetailField label="TikTok Link" value={item.tiktok_link} link={item.tiktok_link || undefined} />
+                  <DetailField label="Production Year" value={item.production_year} />
+                  <DetailField label="Lyrics Writer" value={item.lyrics_writer} />
+                  <DetailField label="AI Type" value={item.ai_type === 'complete' ? 'Fully AI Generated' : item.ai_type === 'hybrid' ? 'Hybrid AI' : null} />
+                  <div className="sm:col-span-2">
+                    <DetailField label="Note for 8PlusMusic" value={item.note_for_8plus} />
+                  </div>
+                </div>
               )}
             </div>
           );

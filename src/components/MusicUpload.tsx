@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, CheckCircle, Music, Link2, User, Instagram, ChevronRight, Play } from 'lucide-react';
+import { Upload, CheckCircle, Music, Link2, User, Instagram, ChevronRight, Play, Phone, Calendar, FileText, StickyNote } from 'lucide-react';
 import { fetchEdgeJson, isSupabaseConfigured } from '../lib/fetchEdge';
 import ArcadeBackButton from './ArcadeBackButton';
 
@@ -53,10 +53,18 @@ export default function MusicUpload() {
     song_name: '',
     song_url: '',
     artist_name: '',
+    real_name: '',
+    phone_number: '',
     instagram_handle: '',
+    tiktok_link: '',
+    production_year: '',
     owns_song: false,
-    is_ai_music: false,
-    ai_type: '',
+    is_fully_ai: false,
+    is_hybrid_ai: false,
+    wrote_lyrics: false,
+    lyrics_writer: '',
+    has_note: false,
+    note_for_8plus: '',
   });
   const [selectedTier, setSelectedTier] = useState('free');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -87,16 +95,14 @@ export default function MusicUpload() {
     fetchQueue();
   }, []);
 
+  const isAnyAi = form.is_fully_ai || form.is_hybrid_ai;
+  const aiType = form.is_fully_ai ? 'complete' : form.is_hybrid_ai ? 'hybrid' : '';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.song_name || !form.song_url || !form.artist_name) return;
     if (!form.owns_song) {
       setErrorMsg('Please confirm you own the song.');
-      setStatus('error');
-      return;
-    }
-    if (form.is_ai_music && !form.ai_type) {
-      setErrorMsg('Please select the AI music type.');
       setStatus('error');
       return;
     }
@@ -126,9 +132,15 @@ export default function MusicUpload() {
           artist_name: form.artist_name,
           instagram_handle: form.instagram_handle,
           owns_song: form.owns_song,
-          is_ai_music: form.is_ai_music,
-          ai_type: form.is_ai_music ? form.ai_type : null,
+          is_ai_music: isAnyAi,
+          ai_type: isAnyAi ? aiType : null,
           tier: selectedTier,
+          real_name: form.real_name,
+          phone_number: form.phone_number,
+          tiktok_link: form.tiktok_link,
+          production_year: form.production_year,
+          lyrics_writer: form.wrote_lyrics ? form.lyrics_writer : null,
+          note_for_8plus: form.has_note ? form.note_for_8plus : null,
         }),
       });
       setStatus('success');
@@ -136,10 +148,18 @@ export default function MusicUpload() {
         song_name: '',
         song_url: '',
         artist_name: '',
+        real_name: '',
+        phone_number: '',
         instagram_handle: '',
+        tiktok_link: '',
+        production_year: '',
         owns_song: false,
-        is_ai_music: false,
-        ai_type: '',
+        is_fully_ai: false,
+        is_hybrid_ai: false,
+        wrote_lyrics: false,
+        lyrics_writer: '',
+        has_note: false,
+        note_for_8plus: '',
       });
       setSelectedTier('free');
       fetchQueue();
@@ -158,7 +178,6 @@ export default function MusicUpload() {
       <div className="fixed bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-teal-400 opacity-10 blur-3xl pointer-events-none" />
 
       <div className="relative z-10 max-w-2xl mx-auto px-6 py-16">
-        {/* Back link */}
         <ArcadeBackButton />
 
         {/* Logo */}
@@ -246,6 +265,32 @@ export default function MusicUpload() {
 
           <div>
             <label className="flex items-center gap-2 text-xs tracking-widest uppercase text-zinc-500 mb-2">
+              <User size={12} /> Real Name or Nickname (optional)
+            </label>
+            <input
+              type="text"
+              value={form.real_name}
+              onChange={e => setForm(f => ({ ...f, real_name: e.target.value }))}
+              placeholder="Your real name or nickname"
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-xs tracking-widest uppercase text-zinc-500 mb-2">
+              <Phone size={12} /> Phone Number with Area Code (optional)
+            </label>
+            <input
+              type="tel"
+              value={form.phone_number}
+              onChange={e => setForm(f => ({ ...f, phone_number: e.target.value }))}
+              placeholder="+1 555 123 4567"
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-xs tracking-widest uppercase text-zinc-500 mb-2">
               <Instagram size={12} /> Instagram Handle (optional)
             </label>
             <input
@@ -257,44 +302,111 @@ export default function MusicUpload() {
             />
           </div>
 
-          {/* AI Music section */}
+          <div>
+            <label className="flex items-center gap-2 text-xs tracking-widest uppercase text-zinc-500 mb-2">
+              <Link2 size={12} /> TikTok Link (optional)
+            </label>
+            <input
+              type="url"
+              value={form.tiktok_link}
+              onChange={e => setForm(f => ({ ...f, tiktok_link: e.target.value }))}
+              placeholder="https://tiktok.com/@yourhandle"
+              className={inputClass}
+            />
+          </div>
+
+          {/* Production Year */}
+          <div>
+            <label className="flex items-center gap-2 text-xs tracking-widest uppercase text-zinc-500 mb-2">
+              <Calendar size={12} /> Production Year (optional)
+            </label>
+            <input
+              type="text"
+              value={form.production_year}
+              onChange={e => setForm(f => ({ ...f, production_year: e.target.value }))}
+              placeholder="e.g. 2024"
+              className={inputClass}
+            />
+          </div>
+
+          {/* AI Music section — restructured */}
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-4">
+            <p className="text-xs tracking-widest uppercase text-zinc-500">AI Generated Music</p>
+
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={form.is_ai_music}
-                onChange={e => setForm(f => ({ ...f, is_ai_music: e.target.checked, ai_type: e.target.checked ? f.ai_type : '' }))}
+                checked={form.is_fully_ai}
+                onChange={e => setForm(f => ({
+                  ...f,
+                  is_fully_ai: e.target.checked,
+                  is_hybrid_ai: e.target.checked ? false : f.is_hybrid_ai,
+                }))}
                 className="w-5 h-5 rounded accent-pink-500"
               />
-              <span className="text-sm text-zinc-300">This is AI-generated music</span>
+              <span className="text-sm text-zinc-300">Fully AI Generated Music</span>
             </label>
 
-            {form.is_ai_music && (
-              <div className="pl-8 space-y-2">
-                <p className="text-xs tracking-widest uppercase text-zinc-500 mb-2">AI Music Type</p>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="ai_type"
-                    value="complete"
-                    checked={form.ai_type === 'complete'}
-                    onChange={e => setForm(f => ({ ...f, ai_type: e.target.value }))}
-                    className="w-4 h-4 accent-pink-500"
-                  />
-                  <span className="text-sm text-zinc-300">Complete AI — fully AI-generated</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="ai_type"
-                    value="hybrid"
-                    checked={form.ai_type === 'hybrid'}
-                    onChange={e => setForm(f => ({ ...f, ai_type: e.target.value }))}
-                    className="w-4 h-4 accent-pink-500"
-                  />
-                  <span className="text-sm text-zinc-300">Hybrid — vocals are by humans</span>
-                </label>
-              </div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.is_hybrid_ai}
+                onChange={e => setForm(f => ({
+                  ...f,
+                  is_hybrid_ai: e.target.checked,
+                  is_fully_ai: e.target.checked ? false : f.is_fully_ai,
+                }))}
+                className="w-5 h-5 rounded accent-teal-400"
+              />
+              <span className="text-sm text-zinc-300">Hybrid AI Music</span>
+            </label>
+          </div>
+
+          {/* Lyrics writer */}
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.wrote_lyrics}
+                onChange={e => setForm(f => ({ ...f, wrote_lyrics: e.target.checked }))}
+                className="w-5 h-5 rounded accent-pink-500"
+              />
+              <span className="text-sm text-zinc-300 flex items-center gap-2">
+                <FileText size={14} /> Who wrote the lyrics
+              </span>
+            </label>
+            {form.wrote_lyrics && (
+              <input
+                type="text"
+                value={form.lyrics_writer}
+                onChange={e => setForm(f => ({ ...f, lyrics_writer: e.target.value }))}
+                placeholder="Name of the lyricist"
+                className={inputClass}
+              />
+            )}
+          </div>
+
+          {/* Note for 8PlusMusic */}
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.has_note}
+                onChange={e => setForm(f => ({ ...f, has_note: e.target.checked }))}
+                className="w-5 h-5 rounded accent-teal-400"
+              />
+              <span className="text-sm text-zinc-300 flex items-center gap-2">
+                <StickyNote size={14} /> Leave a note for 8PlusMusic
+              </span>
+            </label>
+            {form.has_note && (
+              <textarea
+                value={form.note_for_8plus}
+                onChange={e => setForm(f => ({ ...f, note_for_8plus: e.target.value }))}
+                placeholder="Your message to 8PlusMusic..."
+                rows={3}
+                className={inputClass + ' resize-none'}
+              />
             )}
           </div>
 
