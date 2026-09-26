@@ -13,7 +13,9 @@ const MENU_ITEMS: MenuItem[] = [
   { label: '8PLUSMUSIC EPs', target: 'releases' },
   { label: 'SOCIALS', target: 'socials' },
   { label: 'UPLOAD YOUR MUSIC', target: 'upload', external: true },
-  { label: 'BECOME A FAN', target: 'sponsors' },
+  { label: 'BECOME A FAN', target: 'fan', external: true },
+  { label: 'SPONSORSHIP', target: 'sponsors' },
+  { label: 'CONTACT', target: 'contact' },
 ];
 
 export default function EntryPage({ onNavigate, onClose }: { onNavigate: (target: string, external?: boolean) => void; onClose?: () => void }) {

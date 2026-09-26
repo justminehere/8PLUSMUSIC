@@ -14,6 +14,7 @@ import PrivacyPolicy from './components/PrivacyPolicy';
 import MusicUpload from './components/MusicUpload';
 import MusicPlayer from './components/MusicPlayer';
 import EntryPage from './components/EntryPage';
+import FanPage from './components/FanPage';
 
 function isAdminRoute() {
   return (
@@ -32,6 +33,11 @@ function isPlayerRoute() {
     window.location.pathname === '/player' ||
     window.location.pathname.toLowerCase() === '/player'
   );
+}
+
+function isFanRoute() {
+  const p = window.location.pathname.toLowerCase();
+  return p === '/fan' || p === '/fans';
 }
 
 export default function App() {
@@ -66,6 +72,10 @@ export default function App() {
 
   if (isPlayerRoute()) {
     return <MusicPlayer />;
+  }
+
+  if (isFanRoute()) {
+    return <FanPage />;
   }
 
   const [dachshundEp1, dachshundEp2, bunny] = EPS;
@@ -120,13 +130,21 @@ export default function App() {
       {!showEntry && (
         <button
           onClick={openMenu}
-          className="fixed top-4 right-4 z-40 px-4 py-2 font-press-start text-white"
+          className="fixed top-4 right-4 z-40 px-4 py-2 font-press-start text-white hover:text-pink-400"
           style={{
             fontSize: '8px',
             letterSpacing: '0.05em',
             border: '2px solid rgba(45, 212, 191, 0.45)',
             background: 'rgba(0, 0, 0, 0.75)',
-            transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+            transition: 'border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(236, 72, 153, 0.8)';
+            e.currentTarget.style.boxShadow = '0 0 12px rgba(236, 72, 153, 0.45)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(45, 212, 191, 0.45)';
+            e.currentTarget.style.boxShadow = '';
           }}
         >
           MENU
