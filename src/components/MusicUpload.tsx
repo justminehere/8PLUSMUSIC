@@ -107,14 +107,6 @@ export default function MusicUpload() {
       return;
     }
 
-    const tier = TIERS.find(t => t.id === selectedTier)!;
-
-    if (tier.price > 0) {
-      setErrorMsg('Paid uploads require Stripe to be configured. Please choose Free Upload for now, or contact us to set up payments.');
-      setStatus('error');
-      return;
-    }
-
     if (!isSupabaseConfigured()) {
       setErrorMsg('Uploads are temporarily unavailable. Please try again later.');
       setStatus('error');
@@ -123,7 +115,7 @@ export default function MusicUpload() {
 
     setStatus('loading');
     try {
-      await fetchEdgeJson('music-upload', {
+      const data = await fetchEdgeJson<{ success: boolean; id: string; queue_position: number }>('music-upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -143,6 +135,15 @@ export default function MusicUpload() {
           note_for_8plus: form.has_note ? form.note_for_8plus : null,
         }),
       });
+      // Store the uploaded song ID so the user can skip it later from the queue page
+      try {
+        const result = data as { id?: string };
+        if (result?.id) {
+          const ids = JSON.parse(localStorage.getItem('8pm_my_uploads') || '[]');
+          ids.push(result.id);
+          localStorage.setItem('8pm_my_uploads', JSON.stringify(ids));
+        }
+      } catch { /* ignore */ }
       setStatus('success');
       setTimeout(() => setStatus('idle'), 3500);
       setForm({
@@ -448,13 +449,16 @@ export default function MusicUpload() {
                   <div className="flex items-baseline gap-2">
                     <span className="font-bold text-sm text-white">{tier.name}</span>
                     <span className="font-black text-lg" style={{ color: tier.accent }}>
-                      ${tier.price}
+                      {tier.price === 0 ? 'Free' : `${tier.price}`}
                     </span>
                   </div>
                   <p className="text-xs text-zinc-500 mt-0.5">{tier.desc}</p>
                 </div>
               </label>
             ))}
+            <p className="text-xs text-zinc-600 pt-1">
+              Paid options automatically move your song up the queue. You can also skip later from the queue page.
+            </p>
           </div>
 
           {status === 'error' && (

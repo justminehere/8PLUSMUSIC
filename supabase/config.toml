@@ -15,3 +15,6 @@ verify_jwt = false
 
 [functions.song-vote]
 verify_jwt = false
+
+[functions.skip-queue]
+verify_jwt = false

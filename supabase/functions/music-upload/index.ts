@@ -57,18 +57,29 @@ Deno.serve(async (req: Request) => {
 
     const validTiers = ["free", "skip_7", "skip_15", "spot_1"];
     const finalTier = validTiers.includes(tier) ? tier : "free";
-
-    // Get current max queue position
-    const { data: maxRow } = await supabase
-      .from("music_uploads")
-      .select("queue_position")
-      .order("queue_position", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const basePosition = (maxRow?.queue_position ?? 0) + 1;
     const isPaid = finalTier !== "free";
 
+    // Fetch all current songs ordered by position
+    const { data: allSongs } = await supabase
+      .from("music_uploads")
+      .select("id, queue_position")
+      .order("queue_position", { ascending: true });
+
+    const total = allSongs?.length ?? 0;
+
+    // Determine the insert position based on tier
+    let insertPosition: number;
+    if (finalTier === "spot_1") {
+      insertPosition = 1;
+    } else if (finalTier === "skip_15") {
+      insertPosition = Math.max(1, Math.ceil((total + 1) * 0.15));
+    } else if (finalTier === "skip_7") {
+      insertPosition = Math.max(1, Math.ceil((total + 1) * 0.3));
+    } else {
+      insertPosition = total + 1; // free goes to the back
+    }
+
+    // Insert the new song first
     const { data, error } = await supabase
       .from("music_uploads")
       .insert({
@@ -80,7 +91,7 @@ Deno.serve(async (req: Request) => {
         is_ai_music: is_ai_music || false,
         ai_type: is_ai_music ? ai_type : null,
         tier: finalTier,
-        queue_position: basePosition,
+        queue_position: insertPosition,
         is_paid: isPaid,
         real_name: real_name || null,
         phone_number: phone_number || null,
@@ -99,8 +110,21 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Shift other songs down to make room
+    if (allSongs && allSongs.length > 0) {
+      const shiftPromises = allSongs
+        .filter(s => s.queue_position >= insertPosition)
+        .map(s =>
+          supabase
+            .from("music_uploads")
+            .update({ queue_position: s.queue_position + 1 })
+            .eq("id", s.id)
+        );
+      await Promise.all(shiftPromises);
+    }
+
     return new Response(
-      JSON.stringify({ success: true, id: data.id, queue_position: basePosition }),
+      JSON.stringify({ success: true, id: data.id, queue_position: insertPosition }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
