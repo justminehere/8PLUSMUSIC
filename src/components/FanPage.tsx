@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Heart, Trophy, Zap, Crown, Star, Music, Gamepad2,
-  Radio, Award, Lock, Play, Sparkles, Volume2,
+  Radio, Award, Lock, Play, Sparkles, Instagram, Facebook, Youtube, Music2,
 } from 'lucide-react';
 import ArcadeBackButton from './ArcadeBackButton';
 import FlickeringStars from './FlickeringStars';
@@ -48,6 +48,14 @@ const MILESTONES: { num: number; name: string; color: string }[] = [
 const ALL_BADGES = [
   ...LEVELS.map(l => ({ name: l.badge, color: l.color, icon: l.icon, unlocked: l.status === 'unlocked' })),
   ...FUTURE_LEVELS.slice(0, 5).map(l => ({ name: l.name, color: l.color, icon: Star, unlocked: false })),
+];
+
+const SOCIALS = [
+  { label: 'TIKTOK', href: 'https://www.tiktok.com/@8plusmusic?lang=en', color: '#ffffff', icon: Music2 },
+  { label: 'INSTAGRAM', href: 'https://www.instagram.com/8plusmusic/', color: '#ec4899', icon: Instagram },
+  { label: 'FACEBOOK', href: 'https://www.facebook.com/8plusmusic', color: '#60a5fa', icon: Facebook },
+  { label: 'YOUTUBE', href: 'https://www.youtube.com/channel/UCkmp1KlrwUYSxiHc9wFguvw', color: '#ef4444', icon: Youtube },
+  { label: 'SPOTIFY', href: 'https://open.spotify.com/artist/7tClU9LaGgN6jWYy5OuS2R', color: '#22c55e', icon: Music2 },
 ];
 
 function EqualizerBars({ color, bars = 5 }: { color: string; bars?: number }) {
@@ -119,6 +127,7 @@ export default function FanPage() {
   const [achievement, setAchievement] = useState<string | null>(null);
   const [showLevel1, setShowLevel1] = useState(false);
   const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'year'>('week');
+  const [qrUnavailable, setQrUnavailable] = useState(false);
 
   // Check if user already became a fan (localStorage)
   useEffect(() => {
@@ -619,6 +628,65 @@ export default function FanPage() {
         </div>
 
         <div className="arcade-divider max-w-2xl mx-auto mb-12" />
+
+        {/* ── OUR SOCIALS ── */}
+        <section className="fan-socials-section mb-12" aria-labelledby="fan-socials-heading">
+          <div className="arcade-divider max-w-2xl mx-auto mb-12" />
+          <div className="text-center">
+            <p className="arcade-section-label mb-4" style={{ color: '#2dd4bf' }}>Connect with the crew</p>
+            <h3 id="fan-socials-heading" className="font-press-start text-sm text-white tracking-widest mb-8">
+              OUR SOCIALS
+            </h3>
+
+            <div className="fan-social-orbit mx-auto mb-8" aria-label="8PlusMusic social networks">
+              <div className="fan-social-orbit-ring" />
+              <div className="fan-social-core">
+                <span className="font-press-start text-xl text-white">8+</span>
+                <span className="font-press-start text-[7px] text-teal-300">CONNECT</span>
+              </div>
+              {SOCIALS.map((social, index) => {
+                const Icon = social.icon;
+                return (
+                  <a
+                    key={social.label}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="fan-social-orbit-item"
+                    style={{
+                      '--social-color': social.color,
+                      '--social-angle': `${index * 72}deg`,
+                    } as React.CSSProperties}
+                    aria-label={`Open 8PlusMusic on ${social.label}`}
+                  >
+                    <Icon size={22} />
+                    <span>{social.label}</span>
+                  </a>
+                );
+              })}
+            </div>
+
+            <p className="text-xs text-zinc-400 mb-4">FOLLOW THE SIGNAL. FIND THE MUSIC.</p>
+            <div className="fan-qr-frame mx-auto" style={{ width: 250, height: 250 }}>
+              {!qrUnavailable ? (
+                <img
+                  src="/8plusMusic_Socials-1024.jpeg"
+                  alt="Scan to connect with 8PlusMusic on social media"
+                  width={250}
+                  height={250}
+                  className="fan-qr-image"
+                  onError={() => setQrUnavailable(true)}
+                />
+              ) : (
+                <div className="fan-qr-missing">
+                  <span className="font-press-start text-2xl text-pink-400">QR</span>
+                  <span className="font-press-start text-[8px] text-zinc-400">SOCIAL SIGNAL</span>
+                </div>
+              )}
+            </div>
+            <p className="font-press-start text-[8px] text-teal-300 mt-4">SCAN TO CONNECT</p>
+          </div>
+        </section>
 
         {/* ── BOTTOM CTA ── */}
         <div className="text-center mb-8">
