@@ -13,6 +13,7 @@ import PrivacyBanner from './components/PrivacyBanner';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import MusicUpload from './components/MusicUpload';
 import MusicPlayer from './components/MusicPlayer';
+import ChartPage from './components/ChartPage';
 import FanPage from './components/FanPage';
 import ArcadeNav from './components/ArcadeNav';
 import ArcadeAtmosphere from './components/ArcadeAtmosphere';
@@ -34,6 +35,11 @@ function isPlayerRoute() {
     window.location.pathname === '/player' ||
     window.location.pathname.toLowerCase() === '/player'
   );
+}
+
+function isChartRoute() {
+  const p = window.location.pathname.toLowerCase();
+  return p === '/chart' || p === '/charts';
 }
 
 function isFanRoute() {
@@ -69,6 +75,10 @@ export default function App() {
 
   if (isPlayerRoute()) {
     return <MusicPlayer />;
+  }
+
+  if (isChartRoute()) {
+    return <ChartPage />;
   }
 
   if (isFanRoute()) {

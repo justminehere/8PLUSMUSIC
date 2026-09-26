@@ -19,16 +19,6 @@ interface UploadItem {
   play_started_at: string | null;
 }
 
-interface ChartEntry {
-  id: string;
-  song_name: string;
-  song_url: string;
-  artist_name: string;
-  likes: number;
-  dislikes: number;
-  net: number;
-}
-
 const TIKTOK_URL = 'https://www.tiktok.com/@8plusmusic?lang=en';
 
 const SKIP_TIERS = [
@@ -63,8 +53,6 @@ export default function MusicPlayer() {
   const [dislikes, setDislikes] = useState(0);
   const [userVote, setUserVote] = useState<'like' | 'dislike' | null>(null);
   const [voteBurst, setVoteBurst] = useState<string | null>(null);
-  const [chart, setChart] = useState<ChartEntry[]>([]);
-  const [chartLoading, setChartLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
 
   const voterIdRef = useRef(getOrCreateVoterId());
@@ -89,24 +77,9 @@ export default function MusicPlayer() {
     setLoading(false);
   }, []);
 
-  const fetchChart = useCallback(async () => {
-    if (!isSupabaseConfigured()) {
-      setChartLoading(false);
-      return;
-    }
-    try {
-      const data = await fetchEdgeJson<{ chart: ChartEntry[] }>('song-vote/chart');
-      if (data.chart) setChart(data.chart);
-    } catch {
-      // chart may not be ready
-    }
-    setChartLoading(false);
-  }, []);
-
   useEffect(() => {
     fetchQueue();
-    fetchChart();
-  }, [fetchQueue, fetchChart]);
+  }, [fetchQueue]);
 
   // Auto-refresh queue every 5 seconds for responsive voting sync
   useEffect(() => {
@@ -216,7 +189,6 @@ export default function MusicPlayer() {
       });
       setLikes(data.likes || 0);
       setDislikes(data.dislikes || 0);
-      fetchChart();
     } catch {
       // Revert optimistic update on error
       if (prevVote === voteType) {
@@ -446,13 +418,21 @@ export default function MusicPlayer() {
               </div>
             )}
 
-            {!playingSong && songs.length > 0 && (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 mb-8 text-center">
-                <p className="text-xs tracking-widest uppercase text-zinc-600 mb-2">Voting</p>
-                <p className="text-sm text-zinc-400">Waiting for the next song to start...</p>
-                <p className="text-xs text-zinc-600 mt-1">Voting opens when the creator presses Play.</p>
-              </div>
-            )}
+            {!playingSong && songs.length > 0 && (() => {
+              const sortedSongs = [...songs].sort((a, b) => a.queue_position - b.queue_position);
+              const nextSong = sortedSongs[0];
+              return (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 mb-8 text-center">
+                  <p className="text-xs tracking-widest uppercase text-zinc-600 mb-2">Up Next</p>
+                  <h2 className="font-black text-lg text-white truncate mb-1">{nextSong.song_name}</h2>
+                  <p className="text-sm text-zinc-400">{nextSong.artist_name}</p>
+                  <p className="text-sm text-teal-300 mt-3">
+                    Voting for this song will start soon.
+                  </p>
+                  <p className="text-xs text-zinc-600 mt-1">Voting opens when the creator presses Play.</p>
+                </div>
+              );
+            })()}
 
             {/* TikTok Live Link — opens in a separate popup window */}
             <button
@@ -614,55 +594,17 @@ export default function MusicPlayer() {
               )}
             </div>
 
-            {/* Top 10 Chart */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Trophy size={16} className="text-pink-400" />
-                <h3 className="text-sm font-semibold tracking-widest uppercase text-zinc-400">
-                  Top 10 Chart
-                </h3>
-              </div>
-              {chartLoading ? (
-                <div className="text-center py-8">
-                  <div className="inline-block w-6 h-6 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : chart.length === 0 ? (
-                <div className="text-center py-8 rounded-xl border border-dashed border-white/10">
-                  <Trophy size={24} className="mx-auto text-zinc-700 mb-2" />
-                  <p className="text-zinc-500 text-sm">No chart entries yet. Vote to rank songs!</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {chart.map((entry, i) => (
-                    <div
-                      key={entry.id}
-                      className={`flex items-center gap-4 rounded-xl p-3 transition-all ${
-                        i < 3
-                          ? 'border border-pink-500/20 bg-pink-500/5'
-                          : 'border border-white/5 bg-white/[0.02]'
-                      }`}
-                    >
-                      <span
-                        className="font-black text-lg w-8 text-center flex-shrink-0"
-                        style={{
-                          color: i === 0 ? '#fbbf24' : i === 1 ? '#94a3b8' : i === 2 ? '#f97316' : '#3f3f46',
-                        }}
-                      >
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{entry.song_name}</p>
-                        <p className="text-xs text-zinc-500">{entry.artist_name}</p>
-                      </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className="text-xs text-pink-400 font-mono">+{entry.likes}</span>
-                        <span className="text-xs text-teal-400 font-mono">-{entry.dislikes}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Chart link */}
+            <a
+              href="/chart"
+              className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl mb-8 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+              style={{
+                background: 'linear-gradient(90deg, #2dd4bf 0%, #ec4899 100%)',
+              }}
+            >
+              <Trophy size={20} className="text-black" />
+              <span className="font-bold text-black text-sm tracking-wide">View the 8Plus Music Charts</span>
+            </a>
           </>
         )}
       </div>
