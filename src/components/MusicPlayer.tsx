@@ -280,22 +280,6 @@ export default function MusicPlayer() {
           <p className="text-zinc-500 text-xs tracking-[0.3em] uppercase">Live Queue</p>
         </div>
 
-        {/* TikTok Live Link */}
-        <a
-          href={TIKTOK_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl mb-8 transition-all hover:scale-[1.01] active:scale-[0.99]"
-          style={{
-            background: 'linear-gradient(90deg, #ec4899 0%, #2dd4bf 100%)',
-          }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="black">
-            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.3 0 .6.05.88.13v-3.5a6.37 6.37 0 0 0-1-.08A6.34 6.34 0 0 0 0 15.82a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.69a9.69 9.69 0 0 0 5.66 1.81V7.05a4.83 4.83 0 0 1-1.75-.36z" />
-          </svg>
-          <span className="font-bold text-black text-sm tracking-wide">Watch the Live Stream on TikTok</span>
-        </a>
-
         {loading ? (
           <div className="text-center py-20">
             <div className="inline-block w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full animate-spin mb-4" />
@@ -461,6 +445,28 @@ export default function MusicPlayer() {
                 )}
               </div>
             )}
+
+            {!playingSong && songs.length > 0 && (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 mb-8 text-center">
+                <p className="text-xs tracking-widest uppercase text-zinc-600 mb-2">Voting</p>
+                <p className="text-sm text-zinc-400">Waiting for the next song to start...</p>
+                <p className="text-xs text-zinc-600 mt-1">Voting opens when the creator presses Play.</p>
+              </div>
+            )}
+
+            {/* TikTok Live Link — opens in a separate popup window */}
+            <button
+              onClick={() => window.open(TIKTOK_URL, 'tiktok_live', 'width=420,height=740,scrollbars=yes,resizable=yes')}
+              className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl mb-8 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+              style={{
+                background: 'linear-gradient(90deg, #ec4899 0%, #2dd4bf 100%)',
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="black">
+                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.3 0 .6.05.88.13v-3.5a6.37 6.37 0 0 0-1-.08A6.34 6.34 0 0 0 0 15.82a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.69a9.69 9.69 0 0 0 5.66 1.81V7.05a4.83 4.83 0 0 1-1.75-.36z" />
+              </svg>
+              <span className="font-bold text-black text-sm tracking-wide">Watch the Live Stream on TikTok</span>
+            </button>
 
             {/* Queue with skip options per song */}
             <div className="mb-8">
