@@ -56,12 +56,12 @@ export default function StickerCarousel() {
       </div>
 
       <div className="relative z-10 max-w-5xl mx-auto">
-        <h2 className="text-center font-black text-4xl md:text-5xl text-white tracking-tighter mb-3">
-          Our promo<span className="bg-gradient-to-r from-pink-400 to-teal-400 bg-clip-text text-transparent">stickers</span>
-        </h2>
-        <p className="text-center text-zinc-500 text-sm tracking-widest uppercase mb-12">
-          Collect them all
-        </p>
+        <div className="text-center mb-12">
+          <p className="arcade-section-label mb-3" style={{ color: '#ec4899' }}>STICKER GALLERY</p>
+          <h2 className="arcade-section-title text-4xl md:text-5xl">
+            Collect Them <span className="bg-gradient-to-r from-pink-400 to-teal-400 bg-clip-text text-transparent">All</span>
+          </h2>
+        </div>
 
         {hasStickers ? (
           <div className="relative">

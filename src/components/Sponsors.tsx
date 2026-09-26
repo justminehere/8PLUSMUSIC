@@ -1,4 +1,4 @@
-import { BadgeCheck, Globe, Palette, Megaphone, Heart, ChevronRight } from 'lucide-react';
+import { Globe, Palette, Megaphone, Heart, ChevronRight } from 'lucide-react';
 import { setContactSubject } from '../lib/contactIntent';
 
 const PERKS = [
@@ -45,14 +45,8 @@ export default function Sponsors() {
 
         {/* Header */}
         <div className="text-center mb-16">
-          <div
-            className="inline-flex items-center gap-2 mb-5 px-4 py-1.5 rounded-full text-xs tracking-widest uppercase font-semibold"
-            style={{ background: 'rgba(236,72,153,0.1)', border: '1px solid rgba(236,72,153,0.25)', color: '#ec4899' }}
-          >
-            <BadgeCheck size={12} />
-            Sponsorship Opportunities
-          </div>
-          <h2 className="font-black text-5xl md:text-6xl text-white tracking-tighter leading-none mb-5">
+          <p className="arcade-section-label mb-5" style={{ color: '#ec4899' }}>PROMOTION</p>
+          <h2 className="arcade-section-title text-5xl md:text-6xl leading-none mb-5">
             Put Your Brand<br />
             <span className="bg-gradient-to-r from-pink-400 to-teal-400 bg-clip-text text-transparent">
               Inside the 8PlusMusic Universe

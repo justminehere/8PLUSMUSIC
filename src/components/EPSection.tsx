@@ -112,10 +112,10 @@ export default function EPSection({ title, coverColor, coverAccent, tracks, imag
 
         {/* Tracklist */}
         <div className="flex-1 min-w-0">
-          <p className="text-xs tracking-[0.3em] uppercase mb-3" style={{ color: coverColor }}>
-            EP Release
+          <p className="arcade-section-label mb-3" style={{ color: coverColor }}>
+            8PLUSMUSIC EPs
           </p>
-          <h2 className="font-black text-5xl md:text-6xl text-white tracking-tighter mb-8 leading-none">
+          <h2 className="arcade-section-title text-5xl md:text-6xl mb-8 leading-none">
             {title}
           </h2>
 

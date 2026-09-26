@@ -34,10 +34,8 @@ export default function Links() {
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto text-center">
-        <p className="text-xs tracking-[0.3em] uppercase text-pink-400 mb-4">Our Universe</p>
-        <h2 className="font-black text-4xl md:text-5xl text-white tracking-tighter mb-14">
-          Explore the Worlds
-        </h2>
+        <p className="arcade-section-label mb-4" style={{ color: '#ec4899' }}>Our Universe</p>
+        <h2 className="arcade-section-title text-4xl md:text-5xl mb-14">Explore the Worlds</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {links.map((link) => (
