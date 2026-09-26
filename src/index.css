@@ -831,6 +831,13 @@ body {
   }
 }
 
+/* Flickering pixel stars */
+@keyframes starFlicker {
+  0%, 100% { opacity: 0.08; transform: translate(-50%, -50%) scale(0.6); }
+  40%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.2); }
+  60%      { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+}
+
 /* Power-on CRT flash — screen fills white then collapses to a line */
 .arcade-power-flash {
   background: #fff;

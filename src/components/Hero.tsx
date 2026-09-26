@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import SoundWave from './SoundWave';
+import FlickeringStars from './FlickeringStars';
 
 const socials = [
   { label: 'TIKTOK', href: 'https://www.tiktok.com/@8plusmusic?lang=en' },
@@ -94,6 +95,9 @@ export default function Hero() {
       {/* Ambient glow blobs */}
       <div className="absolute top-1/3 left-1/4 w-96 h-96 rounded-full bg-pink-500 opacity-10 blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/3 right-1/4 w-96 h-96 rounded-full bg-teal-400 opacity-10 blur-3xl pointer-events-none" />
+
+      {/* Flickering pixel stars flanking the bunny */}
+      <FlickeringStars />
 
       {/* Occasional pixel spark behind bunny */}
       <div className="arcade-hero-spark absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
