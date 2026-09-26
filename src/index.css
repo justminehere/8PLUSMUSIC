@@ -919,23 +919,21 @@ body {
 }
 
 .vote-btn-idle:hover .vote-glow-pink {
-  opacity: 1;
-}
-
-.vote-btn-idle:hover .vote-glow-teal {
-  opacity: 1;
-}
-
-.vote-glow-pink {
-  opacity: 0;
-  transition: opacity 0.3s ease;
   box-shadow: 0 0 24px 4px rgba(236, 72, 153, 0.5);
 }
 
-.vote-glow-teal {
-  opacity: 0;
-  transition: opacity 0.3s ease;
+.vote-btn-idle:hover .vote-glow-teal {
   box-shadow: 0 0 24px 4px rgba(45, 212, 191, 0.5);
+}
+
+.vote-glow-pink {
+  box-shadow: 0 0 12px 2px rgba(236, 72, 153, 0.25);
+  transition: box-shadow 0.3s ease;
+}
+
+.vote-glow-teal {
+  box-shadow: 0 0 12px 2px rgba(45, 212, 191, 0.25);
+  transition: box-shadow 0.3s ease;
 }
 
 /* Skip option hover glow */
