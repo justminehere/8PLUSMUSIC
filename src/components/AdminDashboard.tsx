@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { EPS } from '../lib/tracks';
 import { edgeFunctionUrl } from '../lib/fetchEdge';
-import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp, Play, Square } from 'lucide-react';
+import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp, Play, Square, ExternalLink } from 'lucide-react';
 import ArcadeBackButton from './ArcadeBackButton';
 
 const ADMIN_PASSWORD = 'Jamilujuhudbu1!';
@@ -307,6 +307,82 @@ const PLAY_GRACE = 30;
 const VOTE_WINDOW = 60;
 const SONG_DURATION_MS = (PLAY_GRACE + VOTE_WINDOW) * 1000;
 
+function toEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace('www.', '');
+
+    // YouTube: youtube.com/watch?v=ID or youtu.be/ID
+    if (host === 'youtube.com' && u.pathname === '/watch') {
+      const id = u.searchParams.get('v');
+      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&controls=1` : null;
+    }
+    if (host === 'youtu.be') {
+      const id = u.pathname.slice(1);
+      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&controls=1` : null;
+    }
+
+    // SoundCloud: soundcloud.com/...
+    if (host === 'soundcloud.com') {
+      return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=true&color=%23ec4899`;
+    }
+
+    // Spotify: open.spotify.com/track/ID
+    if (host === 'open.spotify.com') {
+      return `https://open.spotify.com/embed${u.pathname}`;
+    }
+
+    // Direct audio files
+    if (/\.(mp3|wav|ogg|m4a|aac)(\?|$)/i.test(u.pathname)) {
+      return url;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function EmbeddedPlayer({ url }: { url: string }) {
+  const embedUrl = toEmbedUrl(url);
+  if (!embedUrl) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 text-xs text-pink-400 hover:text-pink-300 transition-colors py-2"
+      >
+        <ExternalLink size={12} />
+        Open song in new tab
+      </a>
+    );
+  }
+
+  // Direct audio file
+  if (embedUrl === url) {
+    return (
+      <audio key={url} src={url} autoPlay controls className="w-full" style={{ height: 36 }} />
+    );
+  }
+
+  // SoundCloud uses a fixed-height iframe
+  const isSoundCloud = embedUrl.includes('w.soundcloud.com');
+  const isSpotify = embedUrl.includes('open.spotify.com');
+
+  return (
+    <iframe
+      key={embedUrl}
+      src={embedUrl}
+      allow="autoplay; encrypted-media"
+      frameBorder="0"
+      scrolling="no"
+      className="w-full"
+      style={{ height: isSoundCloud ? 80 : isSpotify ? 80 : 64 }}
+    />
+  );
+}
+
 function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefresh: () => void }) {
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -551,6 +627,22 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
           )}
         </div>
       </div>
+
+      {/* Embedded audio player for the currently playing song */}
+      {currentlyPlaying && (
+        <div
+          className="rounded-2xl px-5 py-4"
+          style={{ background: '#0d0d0d', border: '1px solid rgba(236,72,153,0.15)' }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <Music size={14} className="text-pink-400" />
+            <span className="text-xs tracking-widest uppercase text-zinc-500">
+              Audio Player — {currentlyPlaying.song_name}
+            </span>
+          </div>
+          <EmbeddedPlayer url={currentlyPlaying.song_url} />
+        </div>
+      )}
 
       {/* Queue list */}
       <div className="rounded-2xl overflow-hidden" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.06)' }}>
