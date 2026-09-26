@@ -960,6 +960,208 @@ body {
   box-shadow: 0 0 16px rgba(45, 212, 191, 0.4);
 }
 
+/* ── Fan Arcade animations ──────────────────────── */
+
+@keyframes fanBlink {
+  0%, 50%, 100% { opacity: 1; }
+  25%, 75% { opacity: 0.2; }
+}
+
+.fan-blink {
+  animation: fanBlink 1s step-end infinite;
+}
+
+@keyframes fanPressStart {
+  0%, 100% { opacity: 1; text-shadow: 0 0 10px rgba(236,72,153,0.6), 0 0 20px rgba(236,72,153,0.3); }
+  50% { opacity: 0.3; text-shadow: none; }
+}
+
+.fan-press-start {
+  animation: fanPressStart 1.2s ease-in-out infinite;
+}
+
+@keyframes fanEqualizer {
+  0%, 100% { height: 20%; }
+  50% { height: 100%; }
+}
+
+.fan-eq-bar {
+  animation: fanEqualizer 0.8s ease-in-out infinite;
+}
+
+@keyframes fanHeartFloat {
+  0% { opacity: 0; transform: translateY(0) scale(0.5); }
+  20% { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-60px) scale(1.2); }
+}
+
+.fan-heart-float {
+  animation: fanHeartFloat 4s ease-out infinite;
+}
+
+@keyframes fanAchievement {
+  0% { opacity: 0; transform: scale(0.3); }
+  30% { opacity: 1; transform: scale(1.3); }
+  60% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+.fan-achievement {
+  animation: fanAchievement 1.5s ease-out forwards;
+}
+
+@keyframes fanPixelBorder {
+  0%, 100% { border-color: rgba(236,72,153,0.4); box-shadow: 0 0 8px rgba(236,72,153,0.2); }
+  50% { border-color: rgba(45,212,191,0.6); box-shadow: 0 0 12px rgba(45,212,191,0.3); }
+}
+
+.fan-pixel-border {
+  animation: fanPixelBorder 3s ease-in-out infinite;
+}
+
+@keyframes fanFlashBg {
+  0%, 100% { background: rgba(236,72,153,0.05); }
+  50% { background: rgba(45,212,191,0.08); }
+}
+
+.fan-flash-bg {
+  animation: fanFlashBg 4s ease-in-out infinite;
+}
+
+@keyframes fanLevelUnlock {
+  0% { opacity: 0; transform: scale(0.5) rotate(-5deg); }
+  40% { opacity: 1; transform: scale(1.15) rotate(2deg); }
+  60% { transform: scale(0.95) rotate(-1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+.fan-level-unlock {
+  animation: fanLevelUnlock 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+@keyframes fanBadgePop {
+  0% { opacity: 0; transform: scale(0); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.fan-badge-pop {
+  animation: fanBadgePop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+@keyframes fanTileHover {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.fan-tile-hover {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.fan-tile-hover:hover {
+  transform: translateY(-4px);
+}
+
+@keyframes fanScanline {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+.fan-scanline {
+  animation: fanScanline 4s linear infinite;
+}
+
+@keyframes fanGlitchFlash {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.15; }
+}
+
+.fan-glitch-flash {
+  animation: fanGlitchFlash 150ms ease-out;
+}
+
+.fan-badge-locked {
+  filter: grayscale(1) brightness(0.3);
+  opacity: 0.4;
+}
+
+.fan-badge-unlocked {
+  filter: none;
+}
+
+.fan-pixel-card {
+  border: 2px solid;
+  image-rendering: pixelated;
+  position: relative;
+}
+
+.fan-arcade-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 14px 28px;
+  border: 2px solid;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.fan-arcade-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 16px currentColor;
+}
+
+.fan-arcade-btn:active {
+  transform: scale(0.97);
+}
+
+.fan-level-card {
+  font-family: 'Press Start 2P', monospace;
+  border: 2px solid;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.fan-level-num {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(10px, 3vw, 14px);
+  letter-spacing: 0.1em;
+}
+
+.fan-activity-tile {
+  font-family: 'Press Start 2P', monospace;
+  border: 2px solid;
+  padding: 24px 20px;
+  text-align: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.fan-activity-tile:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0 20px rgba(45,212,191,0.3);
+}
+
+.fan-activity-tile:active {
+  transform: translateY(-1px) scale(0.98);
+}
+
+.fan-badge-tile {
+  font-family: 'Press Start 2P', monospace;
+  border: 2px solid;
+  padding: 16px 12px;
+  text-align: center;
+  transition: transform 0.12s ease;
+}
+
+.fan-badge-tile:hover {
+  transform: scale(1.05);
+}
+
 /* ── Reduced motion additions ────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .arcade-nav-drop,
@@ -972,7 +1174,18 @@ body {
   .arcade-entry-burst,
   .arcade-nav-glow,
   .arcade-power-flash,
-  .arcade-glitch-sweep {
+  .arcade-glitch-sweep,
+  .fan-blink,
+  .fan-press-start,
+  .fan-eq-bar,
+  .fan-heart-float,
+  .fan-achievement,
+  .fan-pixel-border,
+  .fan-flash-bg,
+  .fan-level-unlock,
+  .fan-badge-pop,
+  .fan-scanline,
+  .fan-glitch-flash {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
