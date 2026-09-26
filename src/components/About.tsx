@@ -25,11 +25,9 @@ export default function About() {
       <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-500/30 to-transparent" />
 
       <div ref={ref} className="reveal-section relative z-10 max-w-4xl mx-auto text-center">
-        <p className="text-xs tracking-[0.3em] uppercase text-teal-400 mb-6">
-          About the Label
-        </p>
+        <p className="arcade-section-label mb-6">About the Label</p>
 
-        <h2 className="font-black text-5xl md:text-6xl text-white tracking-tighter mb-10 leading-tight">
+        <h2 className="arcade-section-title text-5xl md:text-6xl mb-10 leading-tight">
           8Plus<span className="bg-gradient-to-r from-pink-400 to-teal-400 bg-clip-text text-transparent">Music</span>
         </h2>
 

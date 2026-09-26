@@ -13,8 +13,9 @@ import PrivacyBanner from './components/PrivacyBanner';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import MusicUpload from './components/MusicUpload';
 import MusicPlayer from './components/MusicPlayer';
-import EntryPage from './components/EntryPage';
 import FanPage from './components/FanPage';
+import ArcadeNav from './components/ArcadeNav';
+import ArcadeAtmosphere from './components/ArcadeAtmosphere';
 
 function isAdminRoute() {
   return (
@@ -42,12 +43,8 @@ function isFanRoute() {
 
 export default function App() {
   const [policyOpen, setPolicyOpen] = useState(false);
-  const [showEntry, setShowEntry] = useState(true);
-
-  const openMenu = useCallback(() => setShowEntry(true), []);
 
   const handleNavigate = useCallback((target: string, external?: boolean) => {
-    setShowEntry(false);
     if (external) {
       window.location.href = '/' + target;
       return;
@@ -81,75 +78,62 @@ export default function App() {
   const [dachshundEp1, dachshundEp2, bunny] = EPS;
 
   return (
-    <div className="min-h-screen bg-black">
-      {showEntry && <EntryPage onNavigate={handleNavigate} onClose={() => setShowEntry(false)} />}
+    <div className="min-h-screen bg-black relative">
+      <ArcadeAtmosphere />
+      <ArcadeNav onNavigate={handleNavigate} />
 
-      <Hero />
+      {/* Spacer for fixed nav */}
+      <div className="h-10 md:h-12" />
 
-      <section id="releases">
-        <EPSection
-          title={dachshundEp1.label}
-          coverColor={dachshundEp1.coverColor}
-          coverAccent={dachshundEp1.coverAccent}
-          tracks={dachshundEp1.tracks}
-          imageUrl={dachshundEp1.imageUrl}
-        />
+      <div className="relative z-10">
+        <Hero />
 
-        <div className="h-px bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+        <section id="releases">
+          <EPSection
+            title={dachshundEp1.label}
+            coverColor={dachshundEp1.coverColor}
+            coverAccent={dachshundEp1.coverAccent}
+            tracks={dachshundEp1.tracks}
+            imageUrl={dachshundEp1.imageUrl}
+          />
 
-        <EPSection
-          title={dachshundEp2.label}
-          coverColor={dachshundEp2.coverColor}
-          coverAccent={dachshundEp2.coverAccent}
-          tracks={dachshundEp2.tracks}
-          imageUrl={dachshundEp2.imageUrl}
-          reverse
-        />
+          <div className="arcade-divider" />
 
-        <div className="h-px bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+          <EPSection
+            title={dachshundEp2.label}
+            coverColor={dachshundEp2.coverColor}
+            coverAccent={dachshundEp2.coverAccent}
+            tracks={dachshundEp2.tracks}
+            imageUrl={dachshundEp2.imageUrl}
+            reverse
+          />
 
-        <EPSection
-          title={bunny.label}
-          coverColor={bunny.coverColor}
-          coverAccent={bunny.coverAccent}
-          tracks={bunny.tracks}
-          imageUrl={bunny.imageUrl}
-        />
-      </section>
+          <div className="arcade-divider" />
 
-      <section id="about"><About /></section>
-      <section id="socials"><Links /></section>
-      <section id="sponsors"><Sponsors /></section>
-      <section id="contact"><Contact /></section>
-      <StickerCarousel />
-      <Footer />
-      <PrivacyBanner onOpenPolicy={() => setPolicyOpen(true)} />
-      {policyOpen && <PrivacyPolicy onClose={() => setPolicyOpen(false)} />}
+          <EPSection
+            title={bunny.label}
+            coverColor={bunny.coverColor}
+            coverAccent={bunny.coverAccent}
+            tracks={bunny.tracks}
+            imageUrl={bunny.imageUrl}
+          />
+        </section>
 
-      {/* Floating menu button to reopen the arcade entry page */}
-      {!showEntry && (
-        <button
-          onClick={openMenu}
-          className="fixed top-4 right-4 z-40 px-4 py-2 font-press-start text-white hover:text-pink-400"
-          style={{
-            fontSize: '8px',
-            letterSpacing: '0.05em',
-            border: '2px solid rgba(45, 212, 191, 0.45)',
-            background: 'rgba(0, 0, 0, 0.75)',
-            transition: 'border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(236, 72, 153, 0.8)';
-            e.currentTarget.style.boxShadow = '0 0 12px rgba(236, 72, 153, 0.45)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(45, 212, 191, 0.45)';
-            e.currentTarget.style.boxShadow = '';
-          }}
-        >
-          MENU
-        </button>
-      )}
+        <div className="arcade-divider" />
+
+        <section id="about"><About /></section>
+        <div className="arcade-divider" />
+        <section id="socials"><Links /></section>
+        <div className="arcade-divider" />
+        <section id="sponsors"><Sponsors /></section>
+        <div className="arcade-divider" />
+        <section id="contact"><Contact /></section>
+        <div className="arcade-divider" />
+        <StickerCarousel />
+        <Footer />
+        <PrivacyBanner onOpenPolicy={() => setPolicyOpen(true)} />
+        {policyOpen && <PrivacyPolicy onClose={() => setPolicyOpen(false)} />}
+      </div>
     </div>
   );
 }
