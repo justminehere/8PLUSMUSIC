@@ -18,7 +18,6 @@ export default function Hero() {
   }, []);
 
   const [titleText, setTitleText] = useState(prefersReducedMotion ? '8PLUSMUSIC.COM' : '');
-  const [rapText, setRapText] = useState(prefersReducedMotion ? 'RAP' : '');
   const [showFlash, setShowFlash] = useState(!prefersReducedMotion);
 
   useEffect(() => {
@@ -54,29 +53,8 @@ export default function Hero() {
       setTitleText(scrambled);
     }, 45);
 
-    const rapTimeout = setTimeout(() => {
-      const fullRap = 'RAP';
-      let rapFrame = 0;
-      const rapTotal = 16;
-      const rapInterval = setInterval(() => {
-        rapFrame++;
-        if (rapFrame >= rapTotal) {
-          setRapText(fullRap);
-          clearInterval(rapInterval);
-          return;
-        }
-        const revealed = Math.floor((rapFrame / rapTotal) * fullRap.length);
-        const scrambled = fullRap
-          .split('')
-          .map((ch, i) => (i < revealed ? ch : SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)]))
-          .join('');
-        setRapText(scrambled);
-      }, 55);
-    }, 500);
-
     return () => {
       clearInterval(titleInterval);
-      clearTimeout(rapTimeout);
     };
   }, [prefersReducedMotion]);
 
@@ -124,14 +102,6 @@ export default function Hero() {
           />
         </div>
       </div>
-
-      {/* RAP large text - scrambles in */}
-      <h2
-        className="relative z-10 font-black text-white tracking-tighter leading-none mb-4 arcade-rap arcade-rap-enter"
-        style={{ fontSize: 'clamp(3rem, 10vw, 7rem)', letterSpacing: '-0.04em' }}
-      >
-        {rapText || '\u00A0'}
-      </h2>
 
       {/* 8PLUSMUSIC.COM arcade title - scrambles in */}
       <h1
