@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { EPS } from '../lib/tracks';
 import { edgeFunctionUrl } from '../lib/fetchEdge';
-import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp, Play, Square, ExternalLink } from 'lucide-react';
+import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp, Play, Square, ExternalLink, Volume2 } from 'lucide-react';
 import ArcadeBackButton from './ArcadeBackButton';
 
 const ADMIN_PASSWORD = 'Jamilujuhudbu1!';
@@ -307,28 +307,29 @@ const PLAY_GRACE = 30;
 const VOTE_WINDOW = 60;
 const SONG_DURATION_MS = (PLAY_GRACE + VOTE_WINDOW) * 1000;
 
-function toEmbedUrl(url: string): string | null {
+function toEmbedUrl(url: string, autoplay: boolean): string | null {
   try {
     const u = new URL(url);
     const host = u.hostname.replace('www.', '');
+    const ap = autoplay ? 'autoplay=1&mute=1&' : '';
 
     // YouTube: youtube.com/watch?v=ID or youtu.be/ID or youtube.com/shorts/ID
     if (host === 'youtube.com' && u.pathname === '/watch') {
       const id = u.searchParams.get('v');
-      return id ? `https://www.youtube.com/embed/${id}?controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1` : null;
     }
     if (host === 'youtu.be') {
       const id = u.pathname.slice(1);
-      return id ? `https://www.youtube.com/embed/${id}?controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1` : null;
     }
     if (host === 'youtube.com' && u.pathname.startsWith('/shorts/')) {
       const id = u.pathname.split('/')[2];
-      return id ? `https://www.youtube.com/embed/${id}?controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1` : null;
     }
 
     // SoundCloud: soundcloud.com/...
     if (host === 'soundcloud.com') {
-      return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ec4899`;
+      return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=${autoplay ? 'true' : 'false'}&color=%23ec4899`;
     }
 
     // Spotify: open.spotify.com/track/ID
@@ -347,8 +348,8 @@ function toEmbedUrl(url: string): string | null {
   }
 }
 
-function EmbeddedPlayer({ url }: { url: string }) {
-  const embedUrl = toEmbedUrl(url);
+function EmbeddedPlayer({ url, autoplay }: { url: string; autoplay: boolean }) {
+  const embedUrl = toEmbedUrl(url, autoplay);
   if (!embedUrl) {
     return (
       <a
@@ -366,7 +367,7 @@ function EmbeddedPlayer({ url }: { url: string }) {
   // Direct audio file
   if (embedUrl === url) {
     return (
-      <audio key={url} src={url} controls className="w-full" style={{ height: 36 }} />
+      <audio key={url} src={url} autoPlay={autoplay} controls className="w-full" style={{ height: 36 }} />
     );
   }
 
@@ -445,10 +446,10 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
   const startPlayback = async (item: UploadItem) => {
     setAutoPlay(false);
 
-    // Toggle: if this song is already playing, stop it; otherwise start it
     const isCurrentlyPlaying = item.play_started_at || playingId === item.id;
 
     if (isCurrentlyPlaying) {
+      // Stop: set state FIRST so the iframe disappears immediately
       setPlayingId(null);
       setBusy(p => ({ ...p, [item.id]: true }));
       await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', item.id);
@@ -457,15 +458,13 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
       return;
     }
 
-    // Open the song in a new window SYNCHRONOUSLY — inside the click handler,
-    // so the browser treats it as a user gesture and allows autoplay.
-    const embed = toEmbedUrl(item.song_url);
-    const openUrl = embed && embed !== item.song_url ? embed : item.song_url;
-    window.open(openUrl, '_blank', 'noopener,noreferrer');
-
-    // Now do the DB updates
+    // Start: set playingId FIRST so the iframe renders immediately within the click gesture.
+    // This is critical — the iframe with autoplay=1 must mount while the browser
+    // still considers this a user-initiated action.
     setPlayingId(item.id);
     setBusy(p => ({ ...p, [item.id]: true }));
+
+    // DB updates happen after state is set — the player is already rendering
     const playing = sorted.filter(s => s.play_started_at && s.id !== item.id);
     await Promise.all(
       playing.map(s =>
@@ -496,16 +495,13 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
   const playQueueFromStart = async () => {
     if (sorted.length === 0) return;
 
-    // Open the first song in a new window SYNCHRONOUSLY inside the click handler
+    // Set state FIRST — the iframe must mount within the click gesture for autoplay
     const first = sorted[0];
-    const embed = toEmbedUrl(first.song_url);
-    const openUrl = embed && embed !== first.song_url ? embed : first.song_url;
-    window.open(openUrl, '_blank', 'noopener,noreferrer');
-
     setAutoPlay(true);
     setAutoPlayIndex(0);
     setPlayingId(first.id);
-    // Clear all existing playback
+
+    // DB updates after state is set
     const playing = sorted.filter(s => s.play_started_at);
     await Promise.all(
       playing.map(s =>
@@ -541,11 +537,6 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
       setAutoPlayIndex(nextIdx);
       setPlayingId(next.id);
 
-      // Open next song in a new tab
-      const embed = toEmbedUrl(next.song_url);
-      const openUrl = embed && embed !== next.song_url ? embed : next.song_url;
-      window.open(openUrl, '_blank', 'noopener,noreferrer');
-
       (async () => {
         await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
         await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', next.id);
@@ -571,11 +562,6 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
       const next = sorted[nextIdx];
       setAutoPlayIndex(nextIdx);
       setPlayingId(next.id);
-
-      // Open next song in a new tab
-      const embed = toEmbedUrl(next.song_url);
-      const openUrl = embed && embed !== next.song_url ? embed : next.song_url;
-      window.open(openUrl, '_blank', 'noopener,noreferrer');
 
       (async () => {
         await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
@@ -681,10 +667,10 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
               Now Playing — {currentlyPlaying.song_name}
             </span>
           </div>
-          <EmbeddedPlayer url={currentlyPlaying.song_url} />
+          <EmbeddedPlayer url={currentlyPlaying.song_url} autoplay />
           <p className="text-xs text-zinc-500 mt-2 flex items-center gap-1.5">
-            <ExternalLink size={12} className="text-pink-400" />
-            The song opened in a new tab. Use the player above for a visual preview, or the new tab for full playback.
+            <Volume2 size={12} className="text-pink-400" />
+            Video starts muted (browser autoplay policy) — click the speaker icon on the player to unmute.
           </p>
         </div>
       )}
