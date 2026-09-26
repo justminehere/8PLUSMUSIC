@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { playBlip, playArcadeCoin, startAmbient, stopAmbient } from '../lib/arcadeSound';
 
 interface NavItem {
   label: string;
@@ -40,6 +41,12 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
     return () => clearTimeout(t);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      stopAmbient();
+    };
+  }, []);
+
   const prefersReducedMotion = useMemo(() => {
     return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }, []);
@@ -48,8 +55,10 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
     setSoundOn(prev => {
       const next = !prev;
       if (next && !prefersReducedMotion) {
-        playBlip(880, 0.04);
-        setTimeout(() => playBlip(1320, 0.04), 60);
+        playArcadeCoin();
+        startAmbient();
+      } else {
+        stopAmbient();
       }
       return next;
     });
@@ -59,15 +68,15 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
     setActiveIdx(idx);
     setMobileOpen(false);
     if (soundOn && !prefersReducedMotion) {
-      playBlip(220, 0.08);
-      setTimeout(() => playBlip(440, 0.06), 40);
+      playArcadeCoin();
+      setTimeout(() => playBlip(330, 0.06, 0.1), 80);
     }
     onNavigate(item.target, item.external);
   }, [onNavigate, soundOn, prefersReducedMotion]);
 
   const handleHover = (idx: number) => {
     setHoveredIdx(idx);
-    if (soundOn && !prefersReducedMotion) playBlip(440 + idx * 60, 0.03);
+    if (soundOn && !prefersReducedMotion) playBlip(440 + idx * 60, 0.03, 0.06);
   };
 
   return (
@@ -164,25 +173,4 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
       </nav>
     </>
   );
-}
-
-// Tiny Web Audio blip
-let audioCtx: AudioContext | null = null;
-function playBlip(freq: number, duration: number) {
-  try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    if (!audioCtx) return;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.type = 'square';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-    osc.start();
-    osc.stop(audioCtx.currentTime + duration);
-  } catch {
-    // ignore
-  }
 }
