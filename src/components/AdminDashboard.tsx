@@ -312,13 +312,17 @@ function toEmbedUrl(url: string): string | null {
     const u = new URL(url);
     const host = u.hostname.replace('www.', '');
 
-    // YouTube: youtube.com/watch?v=ID or youtu.be/ID
+    // YouTube: youtube.com/watch?v=ID or youtu.be/ID or youtube.com/shorts/ID
     if (host === 'youtube.com' && u.pathname === '/watch') {
       const id = u.searchParams.get('v');
       return id ? `https://www.youtube.com/embed/${id}?autoplay=1&controls=1` : null;
     }
     if (host === 'youtu.be') {
       const id = u.pathname.slice(1);
+      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&controls=1` : null;
+    }
+    if (host === 'youtube.com' && u.pathname.startsWith('/shorts/')) {
+      const id = u.pathname.split('/')[2];
       return id ? `https://www.youtube.com/embed/${id}?autoplay=1&controls=1` : null;
     }
 
@@ -366,19 +370,19 @@ function EmbeddedPlayer({ url }: { url: string }) {
     );
   }
 
-  // SoundCloud uses a fixed-height iframe
   const isSoundCloud = embedUrl.includes('w.soundcloud.com');
   const isSpotify = embedUrl.includes('open.spotify.com');
+  const isYouTube = embedUrl.includes('youtube.com/embed');
 
   return (
     <iframe
       key={embedUrl}
       src={embedUrl}
-      allow="autoplay; encrypted-media"
+      allow="autoplay; encrypted-media; fullscreen"
       frameBorder="0"
       scrolling="no"
-      className="w-full"
-      style={{ height: isSoundCloud ? 80 : isSpotify ? 80 : 64 }}
+      className="w-full rounded-lg"
+      style={{ height: isYouTube ? 200 : isSoundCloud ? 166 : isSpotify ? 80 : 64 }}
     />
   );
 }
@@ -389,10 +393,12 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
   const [expanded, setExpanded] = useState<string | null>(null);
   const [autoPlay, setAutoPlay] = useState(false);
   const [autoPlayIndex, setAutoPlayIndex] = useState(0);
+  const [playingId, setPlayingId] = useState<string | null>(null);
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sorted = [...items].sort((a, b) => a.queue_position - b.queue_position);
-  const currentlyPlaying = sorted.find(s => s.play_started_at);
+  const dbPlaying = sorted.find(s => s.play_started_at);
+  const currentlyPlaying = sorted.find(s => s.id === playingId) ?? dbPlaying;
 
   const clearSkip = async (item: UploadItem) => {
     setBusy(p => ({ ...p, [item.id]: true }));
@@ -447,9 +453,11 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
       )
     );
     // Toggle: if this song is already playing, stop it; otherwise start it
-    if (item.play_started_at) {
+    if (item.play_started_at || playingId === item.id) {
+      setPlayingId(null);
       await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', item.id);
     } else {
+      setPlayingId(item.id);
       await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', item.id);
     }
     setBusy(p => ({ ...p, [item.id]: false }));
@@ -458,6 +466,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
 
   const stopAllPlayback = async () => {
     setAutoPlay(false);
+    setPlayingId(null);
     if (advanceTimerRef.current) {
       clearTimeout(advanceTimerRef.current);
       advanceTimerRef.current = null;
@@ -484,6 +493,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
     );
     // Start the first song
     const first = sorted[0];
+    setPlayingId(first.id);
     await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', first.id);
     onRefresh();
   };
@@ -503,6 +513,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
       if (nextIdx >= sorted.length) {
         // End of queue — stop auto-play
         setAutoPlay(false);
+        setPlayingId(null);
         supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
         onRefresh();
         return;
@@ -510,6 +521,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
 
       const next = sorted[nextIdx];
       setAutoPlayIndex(nextIdx);
+      setPlayingId(next.id);
 
       (async () => {
         await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
@@ -535,6 +547,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
 
       const next = sorted[nextIdx];
       setAutoPlayIndex(nextIdx);
+      setPlayingId(next.id);
 
       (async () => {
         await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
@@ -732,13 +745,13 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
                     onClick={() => startPlayback(item)}
                     disabled={isBusy}
                     className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30 ${
-                      item.play_started_at
+                      (item.play_started_at || playingId === item.id)
                         ? 'bg-pink-500/20 hover:bg-pink-500/30'
                         : 'bg-white/5 hover:bg-pink-500/20'
                     }`}
-                    title={item.play_started_at ? 'Stop playback / voting' : 'Play — starts 30s voting countdown'}
+                    title={(item.play_started_at || playingId === item.id) ? 'Stop playback / voting' : 'Play — starts 30s voting countdown'}
                   >
-                    {item.play_started_at
+                    {(item.play_started_at || playingId === item.id)
                       ? <Square size={12} className="text-pink-400" />
                       : <Play size={14} className="text-pink-400" />
                     }
