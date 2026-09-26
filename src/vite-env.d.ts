@@ -8,7 +8,10 @@ interface YTPlayer {
   getCurrentTime(): number;
   getDuration(): number;
   setVolume(volume: number): void;
+  unMute(): void;
+  mute(): void;
   getPlayerState(): number;
+  destroy(): void;
 }
 
 interface SoundCloudWidget {
@@ -32,7 +35,15 @@ interface SoundCloudWidgetEvents {
 
 interface Window {
   YT?: {
-    Player: new (element: HTMLElement, options: any) => YTPlayer;
+    Player: new (element: HTMLElement, options: {
+      videoId: string;
+      playerVars?: Record<string, number>;
+      events?: {
+        onReady?: (event: { target: YTPlayer }) => void;
+        onStateChange?: (event: { data: number; target: YTPlayer }) => void;
+        onError?: (event: { data: number; target: YTPlayer }) => void;
+      };
+    }) => YTPlayer;
     PlayerState: {
       UNSTARTED: number;
       ENDED: number;

@@ -307,6 +307,19 @@ const PLAY_GRACE = 30;
 const VOTE_WINDOW = 60;
 const SONG_DURATION_MS = (PLAY_GRACE + VOTE_WINDOW) * 1000;
 
+function extractYouTubeId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace('www.', '');
+    if (host === 'youtube.com' && u.pathname === '/watch') return u.searchParams.get('v');
+    if (host === 'youtu.be') return u.pathname.slice(1) || null;
+    if (host === 'youtube.com' && u.pathname.startsWith('/shorts/')) return u.pathname.split('/')[2] ?? null;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function toEmbedUrl(url: string, autoplay: boolean): string | null {
   try {
     const u = new URL(url);
@@ -348,6 +361,83 @@ function toEmbedUrl(url: string, autoplay: boolean): string | null {
   }
 }
 
+function YouTubeAutoUnmutePlayer({ videoId, autoplay }: { videoId: string; autoplay: boolean }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<YTPlayer | null>(null);
+  const unmuteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPlayer = () => {
+      if (cancelled || !containerRef.current || !window.YT || !window.YT.Player) return;
+      playerRef.current = new window.YT.Player(containerRef.current, {
+        videoId,
+        playerVars: {
+          autoplay: autoplay ? 1 : 0,
+          mute: 1,
+          controls: 1,
+        },
+        events: {
+          onReady: (e) => {
+            if (!autoplay) return;
+            e.target.playVideo();
+            let attempts = 0;
+            unmuteTimerRef.current = setInterval(() => {
+              try {
+                e.target.unMute();
+                e.target.setVolume(100);
+                attempts++;
+                if (attempts > 10 && unmuteTimerRef.current) {
+                  clearInterval(unmuteTimerRef.current);
+                  unmuteTimerRef.current = null;
+                }
+              } catch {
+                if (unmuteTimerRef.current) {
+                  clearInterval(unmuteTimerRef.current);
+                  unmuteTimerRef.current = null;
+                }
+              }
+            }, 500);
+          },
+        },
+      });
+    };
+
+    if (window.YT && window.YT.Player) {
+      loadPlayer();
+    } else {
+      // Load the IFrame API script once
+      if (!document.getElementById('yt-iframe-api')) {
+        const tag = document.createElement('script');
+        tag.id = 'yt-iframe-api';
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      }
+      const prev = window.onYouTubeIframeAPIReady ?? null;
+      window.onYouTubeIframeAPIReady = () => {
+        if (prev) prev();
+        loadPlayer();
+      };
+    }
+
+    return () => {
+      cancelled = true;
+      if (unmuteTimerRef.current) {
+        clearInterval(unmuteTimerRef.current);
+        unmuteTimerRef.current = null;
+      }
+      try {
+        playerRef.current?.destroy();
+      } catch {
+        // ignore
+      }
+    };
+  }, [videoId, autoplay]);
+
+  return <div ref={containerRef} className="w-full rounded-lg overflow-hidden" style={{ height: 200 }} />;
+}
+
 function EmbeddedPlayer({ url, autoplay }: { url: string; autoplay: boolean }) {
   const embedUrl = toEmbedUrl(url, autoplay);
   if (!embedUrl) {
@@ -371,9 +461,14 @@ function EmbeddedPlayer({ url, autoplay }: { url: string; autoplay: boolean }) {
     );
   }
 
+  // YouTube — use auto-unmute player
+  const ytId = extractYouTubeId(url);
+  if (ytId) {
+    return <YouTubeAutoUnmutePlayer key={ytId} videoId={ytId} autoplay={autoplay} />;
+  }
+
   const isSoundCloud = embedUrl.includes('w.soundcloud.com');
   const isSpotify = embedUrl.includes('open.spotify.com');
-  const isYouTube = embedUrl.includes('youtube.com/embed');
 
   return (
     <iframe
@@ -383,7 +478,7 @@ function EmbeddedPlayer({ url, autoplay }: { url: string; autoplay: boolean }) {
       frameBorder="0"
       scrolling="no"
       className="w-full rounded-lg"
-      style={{ height: isYouTube ? 200 : isSoundCloud ? 166 : isSpotify ? 80 : 64 }}
+      style={{ height: isSoundCloud ? 166 : isSpotify ? 80 : 64 }}
     />
   );
 }
