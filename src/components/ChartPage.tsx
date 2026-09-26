@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Trophy, Play, Heart, Zap, Crown, X, ExternalLink, Loader2 } from 'lucide-react';
+import { Trophy, Play, Heart, Zap, Crown, X, Loader2, Lock, CheckCircle2 } from 'lucide-react';
 import { fetchEdgeJson, isSupabaseConfigured } from '../lib/fetchEdge';
-import { supabase } from '../lib/supabase';
 import { EmbeddedPlayer } from './EmbeddedPlayer';
 import ArcadeBackButton from './ArcadeBackButton';
 
@@ -45,6 +44,7 @@ export default function ChartPage() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('week');
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [listenedSongs, setListenedSongs] = useState<Set<string>>(new Set());
   const [scores, setScores] = useState<Record<string, number>>({});
   const [boosting, setBoosting] = useState<string | null>(null);
   const [boostMsg, setBoostMsg] = useState<string | null>(null);
@@ -77,6 +77,7 @@ export default function ChartPage() {
   }, [period, fetchChart]);
 
   const playingEntry = chart.find((e) => e.id === playingId);
+  const hasListened = playingEntry ? listenedSongs.has(playingEntry.id) : false;
 
   const handlePlay = (entry: ChartEntry) => {
     if (playingId === entry.id) {
@@ -86,19 +87,23 @@ export default function ChartPage() {
     }
   };
 
+  const handleSongComplete = useCallback(() => {
+    if (playingId) {
+      setListenedSongs((prev) => new Set(prev).add(playingId));
+    }
+  }, [playingId]);
+
   const handleBoost = async (entry: ChartEntry, tierId: string) => {
     const tier = BOOST_TIERS.find((t) => t.id === tierId);
     if (!tier) return;
 
     if (tier.price > 0) {
-      // Paid boost — needs Stripe
       setStripeMsg(true);
       setBoostMsg(`${tier.label} ($${tier.price}) requires payment setup. Free votes work now!`);
       setTimeout(() => setBoostMsg(null), 5000);
       return;
     }
 
-    // Free boost = +1 like
     setBoosting(entry.id);
     try {
       const data = await fetchEdgeJson<{ likes: number; dislikes: number; score: number }>('song-vote', {
@@ -132,13 +137,16 @@ export default function ChartPage() {
         <ArcadeBackButton href="/player" label="BACK TO QUEUE" />
 
         {/* Logo */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-6">
           <h1 className="font-black tracking-tighter leading-none mb-3" style={{ fontSize: 'clamp(2.5rem, 8vw, 4rem)' }}>
             <span className="text-white">8</span>
             <span className="bg-gradient-to-r from-pink-400 via-teal-300 to-pink-400 bg-clip-text text-transparent">Plus</span>
             <span className="text-white">Charts</span>
           </h1>
-          <p className="text-zinc-500 text-xs tracking-[0.3em] uppercase">Vote • Boost • Climb</p>
+          <p className="text-zinc-500 text-xs tracking-[0.3em] uppercase mb-4">Vote • Boost • Climb</p>
+          <p className="text-zinc-400 text-sm max-w-md mx-auto leading-relaxed">
+            When we are not on our livestream you can still listen to our chart listed songs and vote as you like. Voting will be active after you listened to the entire song.
+          </p>
         </div>
 
         {/* Period tabs */}
@@ -180,12 +188,31 @@ export default function ChartPage() {
               </button>
             </div>
 
-            <EmbeddedPlayer url={playingEntry.song_url} autoplay={true} />
+            <EmbeddedPlayer
+              url={playingEntry.song_url}
+              autoplay={true}
+              onComplete={handleSongComplete}
+            />
 
-            {/* Boost voting */}
-            <div className="mt-5">
+            {/* Listening status */}
+            <div className="mt-4 flex items-center justify-center gap-2">
+              {hasListened ? (
+                <div className="flex items-center gap-2 text-teal-300 text-sm">
+                  <CheckCircle2 size={16} />
+                  <span>Song finished — voting is now unlocked!</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-zinc-500 text-sm">
+                  <Lock size={14} />
+                  <span>Listen to the entire song to unlock voting</span>
+                </div>
+              )}
+            </div>
+
+            {/* Boost voting — locked until song finishes */}
+            <div className={`mt-5 transition-all ${hasListened ? '' : 'opacity-40 pointer-events-none'}`}>
               <p className="text-xs tracking-widest uppercase text-zinc-600 mb-3 text-center">
-                Boost this song's chart score
+                {hasListened ? 'Boost this song\'s chart score' : 'Voting locked — finish listening first'}
               </p>
               <div className="grid grid-cols-3 gap-3">
                 {BOOST_TIERS.map((tier) => {
@@ -195,15 +222,17 @@ export default function ChartPage() {
                     <button
                       key={tier.id}
                       onClick={() => handleBoost(playingEntry, tier.id)}
-                      disabled={isBoosting && tier.id === 'free'}
-                      className="flex flex-col items-center gap-1.5 rounded-xl p-3 transition-all hover:scale-[1.03] disabled:opacity-50"
+                      disabled={(isBoosting && tier.id === 'free') || !hasListened}
+                      className="flex flex-col items-center gap-1.5 rounded-xl p-3 transition-all hover:scale-[1.03] disabled:opacity-50 disabled:hover:scale-100"
                       style={{
                         background: `${tier.accent}15`,
                         border: `1px solid ${tier.accent}40`,
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.boxShadow = `0 0 16px ${tier.accent}40`;
-                        e.currentTarget.style.borderColor = `${tier.accent}80`;
+                        if (hasListened) {
+                          e.currentTarget.style.boxShadow = `0 0 16px ${tier.accent}40`;
+                          e.currentTarget.style.borderColor = `${tier.accent}80`;
+                        }
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.boxShadow = '';
@@ -264,51 +293,57 @@ export default function ChartPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {chart.map((entry, i) => (
-              <div
-                key={entry.id}
-                className={`rounded-xl p-4 transition-all ${
-                  i < 3
-                    ? 'border border-pink-500/20 bg-pink-500/5'
-                    : 'border border-white/5 bg-white/[0.02]'
-                } ${playingId === entry.id ? 'ring-1 ring-teal-500/40' : ''}`}
-              >
-                <div className="flex items-center gap-4">
-                  <span
-                    className="font-black text-lg w-8 text-center flex-shrink-0"
-                    style={{
-                      color: i === 0 ? '#fbbf24' : i === 1 ? '#94a3b8' : i === 2 ? '#f97316' : '#3f3f46',
-                    }}
-                  >
-                    {i + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{entry.song_name}</p>
-                    <p className="text-xs text-zinc-500">{entry.artist_name}</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs font-mono font-bold text-pink-400">
-                      {scores[entry.id] ?? entry.score}
-                    </span>
-                    <button
-                      onClick={() => handlePlay(entry)}
-                      className={`flex items-center justify-center w-8 h-8 rounded-full transition-all ${
-                        playingId === entry.id
-                          ? 'bg-teal-500/20 text-teal-300'
-                          : 'bg-white/5 text-zinc-400 hover:bg-white/10'
-                      }`}
-                      aria-label="Play song"
+            {chart.map((entry, i) => {
+              const hasListenedThis = listenedSongs.has(entry.id);
+              return (
+                <div
+                  key={entry.id}
+                  className={`rounded-xl p-4 transition-all ${
+                    i < 3
+                      ? 'border border-pink-500/20 bg-pink-500/5'
+                      : 'border border-white/5 bg-white/[0.02]'
+                  } ${playingId === entry.id ? 'ring-1 ring-teal-500/40' : ''}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <span
+                      className="font-black text-lg w-8 text-center flex-shrink-0"
+                      style={{
+                        color: i === 0 ? '#fbbf24' : i === 1 ? '#94a3b8' : i === 2 ? '#f97316' : '#3f3f46',
+                      }}
                     >
-                      {playingId === entry.id ? (
-                        <X size={14} />
-                      ) : (
-                        <Play size={14} />
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{entry.song_name}</p>
+                      <p className="text-xs text-zinc-500">{entry.artist_name}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {hasListenedThis && playingId !== entry.id && (
+                        <CheckCircle2 size={14} className="text-teal-400" />
                       )}
-                    </button>
+                      <span className="text-xs font-mono font-bold text-pink-400">
+                        {scores[entry.id] ?? entry.score}
+                      </span>
+                      <button
+                        onClick={() => handlePlay(entry)}
+                        className={`flex items-center justify-center w-8 h-8 rounded-full transition-all ${
+                          playingId === entry.id
+                            ? 'bg-teal-500/20 text-teal-300'
+                            : 'bg-white/5 text-zinc-400 hover:bg-white/10'
+                        }`}
+                        aria-label="Play song"
+                      >
+                        {playingId === entry.id ? (
+                          <X size={14} />
+                        ) : (
+                          <Play size={14} />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

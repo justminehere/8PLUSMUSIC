@@ -37,7 +37,7 @@ interface Window {
   YT?: {
     Player: new (element: HTMLElement, options: {
       videoId: string;
-      playerVars?: Record<string, number>;
+      playerVars?: Record<string, number | string>;
       events?: {
         onReady?: (event: { target: YTPlayer }) => void;
         onStateChange?: (event: { data: number; target: YTPlayer }) => void;

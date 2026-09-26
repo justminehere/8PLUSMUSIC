@@ -50,10 +50,22 @@ export function toEmbedUrl(url: string, autoplay: boolean): string | null {
   }
 }
 
-export function YouTubeAutoUnmutePlayer({ videoId, autoplay }: { videoId: string; autoplay: boolean }) {
+interface PlayerProps {
+  videoId: string;
+  autoplay: boolean;
+  onComplete?: () => void;
+  onPlaying?: () => void;
+}
+
+export function YouTubeAutoUnmutePlayer({ videoId, autoplay, onComplete, onPlaying }: PlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const unmuteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onCompleteRef = useRef(onComplete);
+  const onPlayingRef = useRef(onPlaying);
+
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+  useEffect(() => { onPlayingRef.current = onPlaying; }, [onPlaying]);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,9 +78,11 @@ export function YouTubeAutoUnmutePlayer({ videoId, autoplay }: { videoId: string
           autoplay: autoplay ? 1 : 0,
           mute: 1,
           controls: 1,
+          origin: window.location.origin,
+          rel: 0,
         },
         events: {
-          onReady: (e) => {
+          onReady: (e: { target: YTPlayer }) => {
             if (!autoplay) return;
             e.target.playVideo();
             let attempts = 0;
@@ -88,6 +102,10 @@ export function YouTubeAutoUnmutePlayer({ videoId, autoplay }: { videoId: string
                 }
               }
             }, 500);
+          },
+          onStateChange: (e: { data: number; target: YTPlayer }) => {
+            if (e.data === 1 && onPlayingRef.current) onPlayingRef.current();
+            if (e.data === 0 && onCompleteRef.current) onCompleteRef.current();
           },
         },
       });
@@ -126,7 +144,14 @@ export function YouTubeAutoUnmutePlayer({ videoId, autoplay }: { videoId: string
   return <div ref={containerRef} className="w-full rounded-lg overflow-hidden" style={{ height: 200 }} />;
 }
 
-export function EmbeddedPlayer({ url, autoplay }: { url: string; autoplay: boolean }) {
+interface EmbeddedPlayerProps {
+  url: string;
+  autoplay: boolean;
+  onComplete?: () => void;
+  onPlaying?: () => void;
+}
+
+export function EmbeddedPlayer({ url, autoplay, onComplete, onPlaying }: EmbeddedPlayerProps) {
   const embedUrl = toEmbedUrl(url, autoplay);
   if (!embedUrl) {
     return (
@@ -143,13 +168,22 @@ export function EmbeddedPlayer({ url, autoplay }: { url: string; autoplay: boole
 
   if (embedUrl === url) {
     return (
-      <audio key={url} src={url} autoPlay={autoplay} controls className="w-full" style={{ height: 36 }} />
+      <audio
+        key={url}
+        src={url}
+        autoPlay={autoplay}
+        controls
+        className="w-full"
+        style={{ height: 36 }}
+        onEnded={onComplete}
+        onPlay={onPlaying}
+      />
     );
   }
 
   const ytId = extractYouTubeId(url);
   if (ytId) {
-    return <YouTubeAutoUnmutePlayer key={ytId} videoId={ytId} autoplay={autoplay} />;
+    return <YouTubeAutoUnmutePlayer key={ytId} videoId={ytId} autoplay={autoplay} onComplete={onComplete} onPlaying={onPlaying} />;
   }
 
   const isSoundCloud = embedUrl.includes('w.soundcloud.com');
