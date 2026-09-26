@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { EPS } from '../lib/tracks';
 import { edgeFunctionUrl } from '../lib/fetchEdge';
-import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp, Play, Square, ExternalLink } from 'lucide-react';
+import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp, Play, Square, ExternalLink, Volume2 } from 'lucide-react';
 import ArcadeBackButton from './ArcadeBackButton';
 
 const ADMIN_PASSWORD = 'Jamilujuhudbu1!';
@@ -313,17 +313,18 @@ function toEmbedUrl(url: string): string | null {
     const host = u.hostname.replace('www.', '');
 
     // YouTube: youtube.com/watch?v=ID or youtu.be/ID or youtube.com/shorts/ID
+    // mute=1 is required for autoplay to work in modern browsers
     if (host === 'youtube.com' && u.pathname === '/watch') {
       const id = u.searchParams.get('v');
-      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=1` : null;
     }
     if (host === 'youtu.be') {
       const id = u.pathname.slice(1);
-      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=1` : null;
     }
     if (host === 'youtube.com' && u.pathname.startsWith('/shorts/')) {
       const id = u.pathname.split('/')[2];
-      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=1` : null;
     }
 
     // SoundCloud: soundcloud.com/...
@@ -654,6 +655,12 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
             </span>
           </div>
           <EmbeddedPlayer url={currentlyPlaying.song_url} />
+          {toEmbedUrl(currentlyPlaying.song_url)?.includes('youtube.com/embed') && (
+            <p className="text-xs text-zinc-500 mt-2 flex items-center gap-1.5">
+              <Volume2 size={12} className="text-pink-400" />
+              Video starts muted (browser autoplay policy) — click the speaker icon on the player to unmute.
+            </p>
+          )}
         </div>
       )}
 
