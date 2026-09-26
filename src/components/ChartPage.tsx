@@ -13,6 +13,7 @@ interface ChartEntry {
   dislikes: number;
   net: number;
   score: number;
+  created_at: string;
 }
 
 type Period = 'week' | 'month' | 'year';
@@ -116,8 +117,20 @@ export default function ChartPage() {
           tier: 'free',
         }),
       });
-      setScores((prev) => ({ ...prev, [entry.id]: data.score }));
-      setBoostMsg(`Voted for "${entry.song_name}"! +1 to chart score.`);
+      setScores((prev) => {
+        const updated = { ...prev, [entry.id]: data.score };
+        // Re-sort chart based on new scores so positions update immediately
+        setChart((prevChart) =>
+          [...prevChart]
+            .map((e) => ({ ...e, score: updated[e.id] ?? e.score }))
+            .sort((a, b) => {
+              if (b.score !== a.score) return b.score - a.score;
+              return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            })
+        );
+        return updated;
+      });
+      setBoostMsg(`Voted for "${entry.song_name}"! +1 to chart score. Chart positions updated.`);
       setTimeout(() => setBoostMsg(null), 3000);
       fetchChart(period);
     } catch {

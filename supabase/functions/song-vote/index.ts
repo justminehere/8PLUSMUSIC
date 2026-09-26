@@ -129,19 +129,23 @@ Deno.serve(async (req: Request) => {
       }
 
       const scoreMap = new Map<string, { likes: number; dislikes: number; score: number }>();
+      const LIVE_VOTE_MULTIPLIER = 100;
 
+      // Live-stream votes (song_votes) are multiplied by 100 for chart score
       for (const v of (votes || []) as { upload_id: string; vote_type: string; weight: number }[]) {
         const entry = scoreMap.get(v.upload_id) || { likes: 0, dislikes: 0, score: 0 };
+        const w = (v.weight || 1) * LIVE_VOTE_MULTIPLIER;
         if (v.vote_type === "like") {
-          entry.likes += v.weight || 1;
-          entry.score += v.weight || 1;
+          entry.likes += (v.weight || 1);
+          entry.score += w;
         } else {
-          entry.dislikes += v.weight || 1;
-          entry.score -= v.weight || 1;
+          entry.dislikes += (v.weight || 1);
+          entry.score -= w;
         }
         scoreMap.set(v.upload_id, entry);
       }
 
+      // Chart-page boosts (chart_boosts) add their weight directly
       for (const b of (boosts || []) as { upload_id: string; weight: number }[]) {
         const entry = scoreMap.get(b.upload_id) || { likes: 0, dislikes: 0, score: 0 };
         entry.likes += b.weight;
@@ -180,39 +184,28 @@ Deno.serve(async (req: Request) => {
       if (action === "boost") {
         const tier = body.tier as string;
         if (tier === "free") {
-          // Free boost = +1 like vote with weight 1
+          // Free chart-page vote — insert into chart_boosts (weight 1)
           const { data: existing } = await supabase
-            .from("song_votes")
-            .select("id, vote_type, weight")
+            .from("chart_boosts")
+            .select("id")
             .eq("upload_id", upload_id)
             .eq("voter_id", voter_id)
-            .eq("vote_type", "like")
+            .eq("tier", "free")
             .maybeSingle();
 
           if (existing) {
-            // Already liked — toggle off
-            await supabase.from("song_votes").delete().eq("id", existing.id);
+            await supabase.from("chart_boosts").delete().eq("id", existing.id);
           } else {
-            // Check if they disliked — remove dislike first
-            const { data: existingDislike } = await supabase
-              .from("song_votes")
-              .select("id")
-              .eq("upload_id", upload_id)
-              .eq("voter_id", voter_id)
-              .eq("vote_type", "dislike")
-              .maybeSingle();
-            if (existingDislike) {
-              await supabase.from("song_votes").delete().eq("id", existingDislike.id);
-            }
-            await supabase.from("song_votes").insert({
+            await supabase.from("chart_boosts").insert({
               upload_id,
-              vote_type: "like",
               voter_id,
+              tier: "free",
               weight: 1,
+              amount_cents: 0,
             });
           }
 
-          // Return updated score
+          // Return updated score (live votes ×100 + chart boosts)
           const { data: allVotes } = await supabase
             .from("song_votes")
             .select("vote_type, weight")
@@ -224,15 +217,22 @@ Deno.serve(async (req: Request) => {
 
           let likes = 0;
           let dislikes = 0;
+          let score = 0;
           for (const v of (allVotes || []) as { vote_type: string; weight: number }[]) {
-            if (v.vote_type === "like") likes += v.weight || 1;
-            else dislikes += v.weight || 1;
+            if (v.vote_type === "like") {
+              likes += v.weight || 1;
+              score += (v.weight || 1) * 100;
+            } else {
+              dislikes += v.weight || 1;
+              score -= (v.weight || 1) * 100;
+            }
           }
           for (const b of (allBoosts || []) as { weight: number }[]) {
             likes += b.weight;
+            score += b.weight;
           }
 
-          return new Response(JSON.stringify({ likes, dislikes, score: likes - dislikes }), {
+          return new Response(JSON.stringify({ likes, dislikes, score }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
@@ -257,7 +257,7 @@ Deno.serve(async (req: Request) => {
             });
           }
 
-          // Return updated score
+          // Return updated score (live votes ×100 + chart boosts)
           const { data: allVotes } = await supabase
             .from("song_votes")
             .select("vote_type, weight")
@@ -269,15 +269,22 @@ Deno.serve(async (req: Request) => {
 
           let likes = 0;
           let dislikes = 0;
+          let score = 0;
           for (const v of (allVotes || []) as { vote_type: string; weight: number }[]) {
-            if (v.vote_type === "like") likes += v.weight || 1;
-            else dislikes += v.weight || 1;
+            if (v.vote_type === "like") {
+              likes += v.weight || 1;
+              score += (v.weight || 1) * 100;
+            } else {
+              dislikes += v.weight || 1;
+              score -= (v.weight || 1) * 100;
+            }
           }
           for (const b of (allBoosts || []) as { weight: number }[]) {
             likes += b.weight;
+            score += b.weight;
           }
 
-          return new Response(JSON.stringify({ likes, dislikes, score: likes - dislikes, paid: true }), {
+          return new Response(JSON.stringify({ likes, dislikes, score, paid: true }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }

@@ -21,15 +21,15 @@ export function toEmbedUrl(url: string, autoplay: boolean): string | null {
 
     if (host === 'youtube.com' && u.pathname === '/watch') {
       const id = u.searchParams.get('v');
-      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1&rel=0&modestbranding=1&enablejsapi=1` : null;
     }
     if (host === 'youtu.be') {
       const id = u.pathname.slice(1);
-      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1&rel=0&modestbranding=1&enablejsapi=1` : null;
     }
     if (host === 'youtube.com' && u.pathname.startsWith('/shorts/')) {
       const id = u.pathname.split('/')[2];
-      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?${ap}controls=1&rel=0&modestbranding=1&enablejsapi=1` : null;
     }
 
     if (host === 'soundcloud.com') {
@@ -58,90 +58,117 @@ interface PlayerProps {
 }
 
 export function YouTubeAutoUnmutePlayer({ videoId, autoplay, onComplete, onPlaying }: PlayerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<YTPlayer | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const unmuteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onCompleteRef = useRef(onComplete);
   const onPlayingRef = useRef(onPlaying);
+  const hasFiredCompleteRef = useRef(false);
 
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
   useEffect(() => { onPlayingRef.current = onPlaying; }, [onPlaying]);
 
+  // Listen for YouTube state change via postMessage
   useEffect(() => {
-    let cancelled = false;
+    hasFiredCompleteRef.current = false;
 
-    const loadPlayer = () => {
-      if (cancelled || !containerRef.current || !window.YT || !window.YT.Player) return;
-      playerRef.current = new window.YT.Player(containerRef.current, {
-        videoId,
-        playerVars: {
-          autoplay: autoplay ? 1 : 0,
-          mute: 1,
-          controls: 1,
-          origin: window.location.origin,
-          rel: 0,
-        },
-        events: {
-          onReady: (e: { target: YTPlayer }) => {
-            if (!autoplay) return;
-            e.target.playVideo();
-            let attempts = 0;
-            unmuteTimerRef.current = setInterval(() => {
-              try {
-                e.target.unMute();
-                e.target.setVolume(100);
-                attempts++;
-                if (attempts > 10 && unmuteTimerRef.current) {
-                  clearInterval(unmuteTimerRef.current);
-                  unmuteTimerRef.current = null;
-                }
-              } catch {
-                if (unmuteTimerRef.current) {
-                  clearInterval(unmuteTimerRef.current);
-                  unmuteTimerRef.current = null;
-                }
-              }
-            }, 500);
-          },
-          onStateChange: (e: { data: number; target: YTPlayer }) => {
-            if (e.data === 1 && onPlayingRef.current) onPlayingRef.current();
-            if (e.data === 0 && onCompleteRef.current) onCompleteRef.current();
-          },
-        },
-      });
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== 'https://www.youtube.com') return;
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data.event !== 'onStateChange' || !data.info) return;
+
+        // 1 = playing, 0 = ended
+        if (data.info === 1 && onPlayingRef.current) {
+          onPlayingRef.current();
+        }
+        if (data.info === 0 && !hasFiredCompleteRef.current) {
+          hasFiredCompleteRef.current = true;
+          if (onCompleteRef.current) onCompleteRef.current();
+        }
+      } catch {
+        // ignore malformed messages
+      }
     };
 
-    if (window.YT && window.YT.Player) {
-      loadPlayer();
-    } else {
-      if (!document.getElementById('yt-iframe-api')) {
-        const tag = document.createElement('script');
-        tag.id = 'yt-iframe-api';
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
-      }
-      const prev = window.onYouTubeIframeAPIReady ?? null;
-      window.onYouTubeIframeAPIReady = () => {
-        if (prev) prev();
-        loadPlayer();
-      };
-    }
-
+    window.addEventListener('message', handler);
     return () => {
-      cancelled = true;
+      window.removeEventListener('message', handler);
       if (unmuteTimerRef.current) {
         clearInterval(unmuteTimerRef.current);
         unmuteTimerRef.current = null;
       }
+    };
+  }, [videoId]);
+
+  // Send "listen" command to the iframe so it posts state changes
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !iframe.contentWindow) return;
+
+    const sendListen = () => {
       try {
-        playerRef.current?.destroy();
+        iframe.contentWindow!.postMessage(
+          JSON.stringify({ event: 'listening' }),
+          'https://www.youtube.com'
+        );
       } catch {
         // ignore
       }
     };
+
+    // YouTube needs repeated "listening" pings until it responds
+    sendListen();
+    const timer = setInterval(sendListen, 1000);
+    const stopTimer = setTimeout(() => clearInterval(timer), 8000);
+
+    // Attempt to unmute after a delay (autoplay starts muted)
+    if (autoplay) {
+      unmuteTimerRef.current = setInterval(() => {
+        try {
+          iframe.contentWindow!.postMessage(
+            JSON.stringify({ event: 'command', func: 'unMute', args: [] }),
+            'https://www.youtube.com'
+          );
+          iframe.contentWindow!.postMessage(
+            JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }),
+            'https://www.youtube.com'
+          );
+        } catch {
+          // ignore
+        }
+      }, 800);
+      setTimeout(() => {
+        if (unmuteTimerRef.current) {
+          clearInterval(unmuteTimerRef.current);
+          unmuteTimerRef.current = null;
+        }
+      }, 6000);
+    }
+
+    return () => {
+      clearInterval(timer);
+      clearTimeout(stopTimer);
+      if (unmuteTimerRef.current) {
+        clearInterval(unmuteTimerRef.current);
+        unmuteTimerRef.current = null;
+      }
+    };
   }, [videoId, autoplay]);
 
-  return <div ref={containerRef} className="w-full rounded-lg overflow-hidden" style={{ height: 200 }} />;
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?${autoplay ? 'autoplay=1&mute=1&' : ''}controls=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+
+  return (
+    <iframe
+      ref={iframeRef}
+      key={videoId}
+      src={embedUrl}
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowFullScreen
+      frameBorder="0"
+      className="w-full rounded-lg"
+      style={{ height: 200 }}
+    />
+  );
 }
 
 interface EmbeddedPlayerProps {
