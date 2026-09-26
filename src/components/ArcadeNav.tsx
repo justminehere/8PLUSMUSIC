@@ -26,6 +26,7 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
   const [soundOn, setSoundOn] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -34,11 +35,10 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const handleClick = useCallback((item: NavItem, idx: number) => {
-    setActiveIdx(idx);
-    setMobileOpen(false);
-    onNavigate(item.target, item.external);
-  }, [onNavigate]);
+  useEffect(() => {
+    const t = setTimeout(() => setEntered(true), 100);
+    return () => clearTimeout(t);
+  }, []);
 
   const prefersReducedMotion = useMemo(() => {
     return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -49,10 +49,21 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
       const next = !prev;
       if (next && !prefersReducedMotion) {
         playBlip(880, 0.04);
+        setTimeout(() => playBlip(1320, 0.04), 60);
       }
       return next;
     });
   };
+
+  const handleClick = useCallback((item: NavItem, idx: number) => {
+    setActiveIdx(idx);
+    setMobileOpen(false);
+    if (soundOn && !prefersReducedMotion) {
+      playBlip(220, 0.08);
+      setTimeout(() => playBlip(440, 0.06), 40);
+    }
+    onNavigate(item.target, item.external);
+  }, [onNavigate, soundOn, prefersReducedMotion]);
 
   const handleHover = (idx: number) => {
     setHoveredIdx(idx);
@@ -62,7 +73,7 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
   return (
     <>
       <nav
-        className="arcade-nav fixed top-0 inset-x-0 z-50"
+        className={`arcade-nav fixed top-0 inset-x-0 z-50 ${entered ? 'arcade-nav-entered' : ''}`}
         style={{
           background: scrolled ? 'rgba(0,0,0,0.92)' : 'rgba(0,0,0,0.7)',
           backdropFilter: 'blur(6px)',
@@ -72,6 +83,9 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
       >
         {/* Scanline texture overlay */}
         <div className="arcade-nav-scanlines pointer-events-none absolute inset-0" />
+
+        {/* Animated border glow */}
+        <div className="arcade-nav-glow pointer-events-none absolute bottom-0 inset-x-0" />
 
         {/* Status lights */}
         <div className="absolute left-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1.5 pointer-events-none">
@@ -84,7 +98,8 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
           {NAV_ITEMS.map((item, i) => (
             <button
               key={item.target}
-              className="arcade-nav-item"
+              className="arcade-nav-item arcade-nav-drop"
+              style={{ animationDelay: `${i * 80}ms` }}
               onMouseEnter={() => handleHover(i)}
               onMouseLeave={() => setHoveredIdx(null)}
               onFocus={() => handleHover(i)}
@@ -99,8 +114,8 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
           {/* Sound toggle */}
           <button
             onClick={toggleSound}
-            className="arcade-sound-toggle"
-            style={{ color: soundOn ? '#2dd4bf' : 'rgba(255,255,255,0.35)' }}
+            className="arcade-sound-toggle arcade-nav-drop"
+            style={{ color: soundOn ? '#2dd4bf' : 'rgba(255,255,255,0.35)', animationDelay: `${NAV_ITEMS.length * 80}ms` }}
           >
             SOUND: {soundOn ? 'ON' : 'OFF'}
           </button>
@@ -108,20 +123,21 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
 
         {/* Mobile nav */}
         <div className="relative z-10 flex md:hidden items-center justify-between px-4 py-2">
-          <span className="font-press-start text-white" style={{ fontSize: '8px', letterSpacing: '0.05em' }}>
+          <span className="font-press-start text-white arcade-nav-drop" style={{ fontSize: '8px', letterSpacing: '0.05em', animationDelay: '0ms' }}>
             8PLUSMUSIC
           </span>
           <div className="flex items-center gap-3">
             <button
               onClick={toggleSound}
-              className="arcade-sound-toggle"
-              style={{ color: soundOn ? '#2dd4bf' : 'rgba(255,255,255,0.35)', fontSize: '7px', padding: '4px 8px' }}
+              className="arcade-sound-toggle arcade-nav-drop"
+              style={{ color: soundOn ? '#2dd4bf' : 'rgba(255,255,255,0.35)', fontSize: '7px', padding: '4px 8px', animationDelay: '80ms' }}
             >
               {soundOn ? 'SND ON' : 'SND OFF'}
             </button>
             <button
               onClick={() => setMobileOpen(prev => !prev)}
-              className="arcade-mobile-btn"
+              className="arcade-mobile-btn arcade-nav-drop"
+              style={{ animationDelay: '160ms' }}
             >
               {mobileOpen ? 'X' : '='}
             </button>
@@ -134,7 +150,8 @@ export default function ArcadeNav({ onNavigate }: ArcadeNavProps) {
             {NAV_ITEMS.map((item, i) => (
               <button
                 key={item.target}
-                className="arcade-nav-item-mobile"
+                className="arcade-nav-item-mobile arcade-mobile-drop"
+                style={{ animationDelay: `${i * 50}ms` }}
                 onClick={() => handleClick(item, i)}
                 onTouchStart={() => setHoveredIdx(i)}
               >

@@ -620,3 +620,195 @@ body {
   60% { opacity: 0.8; }
   100% { opacity: 1; }
 }
+
+/* ── Nav drop-in animation ────────────────────────── */
+.arcade-nav-drop {
+  opacity: 0;
+  animation: navDropIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes navDropIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-30px) scaleY(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(4px) scaleY(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+/* Mobile dropdown stagger */
+.arcade-mobile-drop {
+  opacity: 0;
+  animation: mobileDropIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes mobileDropIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Nav bottom glow pulse */
+.arcade-nav-glow {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(45, 212, 191, 0.6), rgba(236, 72, 153, 0.4), transparent);
+  background-size: 200% 100%;
+  animation: navGlowSlide 4s linear infinite;
+}
+
+@keyframes navGlowSlide {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Hero entrance animations ────────────────────── */
+
+/* Bunny drops from above with bounce */
+.arcade-bunny-drop {
+  animation: bunnyDrop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes bunnyDrop {
+  0% {
+    opacity: 0;
+    transform: translateY(-120px) scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(10px) scale(1.08);
+  }
+  70% {
+    transform: translateY(-5px) scale(0.98);
+  }
+  85% {
+    transform: translateY(3px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* RAP text slams in */
+.arcade-rap-enter {
+  animation: rapSlam 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: 0.3s;
+}
+
+@keyframes rapSlam {
+  0% {
+    opacity: 0;
+    transform: scale(3) translateY(-40px);
+    filter: blur(8px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) translateY(0);
+    filter: blur(0);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Title fade-in with flicker */
+.arcade-title-enter {
+  animation: titleEnter 0.6s ease-out both;
+  animation-delay: 0.5s;
+}
+
+@keyframes titleEnter {
+  0% { opacity: 0; transform: scaleY(0.1); }
+  30% { opacity: 0.5; transform: scaleY(1.2); }
+  50% { opacity: 0.3; transform: scaleY(0.9); }
+  70% { opacity: 0.8; transform: scaleY(1.05); }
+  100% { opacity: 1; transform: scaleY(1); }
+}
+
+/* Slide up entrance */
+.arcade-slide-up {
+  opacity: 0;
+  animation: arcadeSlideUp 0.5s ease-out both;
+}
+
+@keyframes arcadeSlideUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Social links drop in with stagger */
+.arcade-social-drop {
+  opacity: 0;
+  animation: socialDrop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes socialDrop {
+  0% {
+    opacity: 0;
+    transform: translateY(-15px) rotateX(90deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotateX(0);
+  }
+}
+
+/* Entry burst flash */
+.arcade-entry-burst {
+  width: 4px;
+  height: 4px;
+  background: #fff;
+  border-radius: 50%;
+  animation: entryBurst 0.6s ease-out forwards;
+}
+
+@keyframes entryBurst {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.6), 0 0 0 0 rgba(236, 72, 153, 0.4);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 20px 40px rgba(45, 212, 191, 0.3), 0 0 40px 60px rgba(236, 72, 153, 0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(30);
+    box-shadow: 0 0 0 0 rgba(45, 212, 191, 0), 0 0 0 0 rgba(236, 72, 153, 0);
+  }
+}
+
+/* ── Reduced motion additions ────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .arcade-nav-drop,
+  .arcade-mobile-drop,
+  .arcade-bunny-drop,
+  .arcade-rap-enter,
+  .arcade-title-enter,
+  .arcade-slide-up,
+  .arcade-social-drop,
+  .arcade-entry-burst,
+  .arcade-nav-glow {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
