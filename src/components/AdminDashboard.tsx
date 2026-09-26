@@ -66,6 +66,7 @@ interface UploadItem {
   is_paid: boolean;
   created_at: string;
   play_started_at: string | null;
+  played_at: string | null;
   real_name: string | null;
   phone_number: string | null;
   tiktok_link: string | null;
@@ -372,7 +373,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
       // Stop: set state FIRST so the iframe disappears immediately
       setPlayingId(null);
       setBusy(p => ({ ...p, [item.id]: true }));
-      await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', item.id);
+      await supabase.from('music_uploads').update({ play_started_at: null, played_at: new Date().toISOString() }).eq('id', item.id);
       setBusy(p => ({ ...p, [item.id]: false }));
       onRefresh();
       return;
@@ -406,7 +407,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
     const playing = sorted.filter(s => s.play_started_at);
     await Promise.all(
       playing.map(s =>
-        supabase.from('music_uploads').update({ play_started_at: null }).eq('id', s.id)
+        supabase.from('music_uploads').update({ play_started_at: null, played_at: new Date().toISOString() }).eq('id', s.id)
       )
     );
     onRefresh();
@@ -448,7 +449,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
         // End of queue — stop auto-play
         setAutoPlay(false);
         setPlayingId(null);
-        supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
+        supabase.from('music_uploads').update({ play_started_at: null, played_at: new Date().toISOString() }).eq('id', currentlyPlaying.id);
         onRefresh();
         return;
       }
@@ -458,7 +459,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
       setPlayingId(next.id);
 
       (async () => {
-        await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
+        await supabase.from('music_uploads').update({ play_started_at: null, played_at: new Date().toISOString() }).eq('id', currentlyPlaying.id);
         await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', next.id);
         onRefresh();
       })();
@@ -474,7 +475,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
 
       if (nextIdx >= sorted.length) {
         setAutoPlay(false);
-        supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
+        supabase.from('music_uploads').update({ play_started_at: null, played_at: new Date().toISOString() }).eq('id', currentlyPlaying.id);
         onRefresh();
         return;
       }
@@ -484,7 +485,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
       setPlayingId(next.id);
 
       (async () => {
-        await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
+        await supabase.from('music_uploads').update({ play_started_at: null, played_at: new Date().toISOString() }).eq('id', currentlyPlaying.id);
         await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', next.id);
         onRefresh();
       })();
@@ -789,7 +790,7 @@ export default function AdminDashboard() {
       supabase.from('contacts').select('*').order('created_at', { ascending: false }),
       supabase.from('chat_messages').select('*').order('created_at', { ascending: false }).limit(200),
       supabase.from('track_links').select('*').order('ep').order('track_title'),
-      supabase.from('music_uploads').select('*').order('queue_position', { ascending: true }),
+      supabase.from('music_uploads').select('*').is('played_at', null).order('queue_position', { ascending: true }),
     ]);
     if (c.data) setContacts(c.data as Contact[]);
     if (m.data) setChatMsgs(m.data as ChatMessage[]);
@@ -804,7 +805,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!authed) return;
     const interval = setInterval(async () => {
-      const q = await supabase.from('music_uploads').select('*').order('queue_position', { ascending: true });
+      const q = await supabase.from('music_uploads').select('*').is('played_at', null).order('queue_position', { ascending: true });
       if (q.data) setQueueItems(q.data as UploadItem[]);
     }, 10000);
     return () => clearInterval(interval);

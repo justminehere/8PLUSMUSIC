@@ -17,6 +17,7 @@ interface UploadItem {
   is_paid: boolean;
   created_at: string;
   play_started_at: string | null;
+  played_at: string | null;
 }
 
 const TIKTOK_URL = 'https://www.tiktok.com/@8plusmusic?lang=en';

@@ -16,9 +16,11 @@ Deno.serve(async (req: Request) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Only return songs that haven't been played yet (played_at IS NULL)
     const { data, error, count } = await supabase
       .from("music_uploads")
       .select("*", { count: "exact" })
+      .is("played_at", null)
       .order("queue_position", { ascending: true });
 
     if (error) {
