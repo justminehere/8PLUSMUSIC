@@ -144,6 +144,7 @@ export default function MusicUpload() {
         }),
       });
       setStatus('success');
+      setTimeout(() => setStatus('idle'), 3500);
       setForm({
         song_name: '',
         song_url: '',
