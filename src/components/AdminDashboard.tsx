@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { EPS } from '../lib/tracks';
 import { edgeFunctionUrl } from '../lib/fetchEdge';
-import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp, Play, Square, ExternalLink, Volume2 } from 'lucide-react';
+import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp, Play, Square, ExternalLink } from 'lucide-react';
 import ArcadeBackButton from './ArcadeBackButton';
 
 const ADMIN_PASSWORD = 'Jamilujuhudbu1!';
@@ -313,23 +313,22 @@ function toEmbedUrl(url: string): string | null {
     const host = u.hostname.replace('www.', '');
 
     // YouTube: youtube.com/watch?v=ID or youtu.be/ID or youtube.com/shorts/ID
-    // mute=1 is required for autoplay to work in modern browsers
     if (host === 'youtube.com' && u.pathname === '/watch') {
       const id = u.searchParams.get('v');
-      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?controls=1` : null;
     }
     if (host === 'youtu.be') {
       const id = u.pathname.slice(1);
-      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?controls=1` : null;
     }
     if (host === 'youtube.com' && u.pathname.startsWith('/shorts/')) {
       const id = u.pathname.split('/')[2];
-      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=1` : null;
+      return id ? `https://www.youtube.com/embed/${id}?controls=1` : null;
     }
 
     // SoundCloud: soundcloud.com/...
     if (host === 'soundcloud.com') {
-      return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=true&color=%23ec4899`;
+      return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ec4899`;
     }
 
     // Spotify: open.spotify.com/track/ID
@@ -367,7 +366,7 @@ function EmbeddedPlayer({ url }: { url: string }) {
   // Direct audio file
   if (embedUrl === url) {
     return (
-      <audio key={url} src={url} autoPlay controls className="w-full" style={{ height: 36 }} />
+      <audio key={url} src={url} controls className="w-full" style={{ height: 36 }} />
     );
   }
 
@@ -445,22 +444,35 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
 
   const startPlayback = async (item: UploadItem) => {
     setAutoPlay(false);
+
+    // Toggle: if this song is already playing, stop it; otherwise start it
+    const isCurrentlyPlaying = item.play_started_at || playingId === item.id;
+
+    if (isCurrentlyPlaying) {
+      setPlayingId(null);
+      setBusy(p => ({ ...p, [item.id]: true }));
+      await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', item.id);
+      setBusy(p => ({ ...p, [item.id]: false }));
+      onRefresh();
+      return;
+    }
+
+    // Open the song in a new window SYNCHRONOUSLY — inside the click handler,
+    // so the browser treats it as a user gesture and allows autoplay.
+    const embed = toEmbedUrl(item.song_url);
+    const openUrl = embed && embed !== item.song_url ? embed : item.song_url;
+    window.open(openUrl, '_blank', 'noopener,noreferrer');
+
+    // Now do the DB updates
+    setPlayingId(item.id);
     setBusy(p => ({ ...p, [item.id]: true }));
-    // Clear any previously playing song
     const playing = sorted.filter(s => s.play_started_at && s.id !== item.id);
     await Promise.all(
       playing.map(s =>
         supabase.from('music_uploads').update({ play_started_at: null }).eq('id', s.id)
       )
     );
-    // Toggle: if this song is already playing, stop it; otherwise start it
-    if (item.play_started_at || playingId === item.id) {
-      setPlayingId(null);
-      await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', item.id);
-    } else {
-      setPlayingId(item.id);
-      await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', item.id);
-    }
+    await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', item.id);
     setBusy(p => ({ ...p, [item.id]: false }));
     onRefresh();
   };
@@ -483,8 +495,16 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
 
   const playQueueFromStart = async () => {
     if (sorted.length === 0) return;
+
+    // Open the first song in a new window SYNCHRONOUSLY inside the click handler
+    const first = sorted[0];
+    const embed = toEmbedUrl(first.song_url);
+    const openUrl = embed && embed !== first.song_url ? embed : first.song_url;
+    window.open(openUrl, '_blank', 'noopener,noreferrer');
+
     setAutoPlay(true);
     setAutoPlayIndex(0);
+    setPlayingId(first.id);
     // Clear all existing playback
     const playing = sorted.filter(s => s.play_started_at);
     await Promise.all(
@@ -492,9 +512,6 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
         supabase.from('music_uploads').update({ play_started_at: null }).eq('id', s.id)
       )
     );
-    // Start the first song
-    const first = sorted[0];
-    setPlayingId(first.id);
     await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', first.id);
     onRefresh();
   };
@@ -524,6 +541,11 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
       setAutoPlayIndex(nextIdx);
       setPlayingId(next.id);
 
+      // Open next song in a new tab
+      const embed = toEmbedUrl(next.song_url);
+      const openUrl = embed && embed !== next.song_url ? embed : next.song_url;
+      window.open(openUrl, '_blank', 'noopener,noreferrer');
+
       (async () => {
         await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
         await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', next.id);
@@ -549,6 +571,11 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
       const next = sorted[nextIdx];
       setAutoPlayIndex(nextIdx);
       setPlayingId(next.id);
+
+      // Open next song in a new tab
+      const embed = toEmbedUrl(next.song_url);
+      const openUrl = embed && embed !== next.song_url ? embed : next.song_url;
+      window.open(openUrl, '_blank', 'noopener,noreferrer');
 
       (async () => {
         await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
@@ -642,7 +669,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
         </div>
       </div>
 
-      {/* Embedded audio player for the currently playing song */}
+      {/* Embedded player preview for the currently playing song */}
       {currentlyPlaying && (
         <div
           className="rounded-2xl px-5 py-4"
@@ -651,16 +678,14 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
           <div className="flex items-center gap-2 mb-3">
             <Music size={14} className="text-pink-400" />
             <span className="text-xs tracking-widest uppercase text-zinc-500">
-              Audio Player — {currentlyPlaying.song_name}
+              Now Playing — {currentlyPlaying.song_name}
             </span>
           </div>
           <EmbeddedPlayer url={currentlyPlaying.song_url} />
-          {toEmbedUrl(currentlyPlaying.song_url)?.includes('youtube.com/embed') && (
-            <p className="text-xs text-zinc-500 mt-2 flex items-center gap-1.5">
-              <Volume2 size={12} className="text-pink-400" />
-              Video starts muted (browser autoplay policy) — click the speaker icon on the player to unmute.
-            </p>
-          )}
+          <p className="text-xs text-zinc-500 mt-2 flex items-center gap-1.5">
+            <ExternalLink size={12} className="text-pink-400" />
+            The song opened in a new tab. Use the player above for a visual preview, or the new tab for full playback.
+          </p>
         </div>
       )}
 
