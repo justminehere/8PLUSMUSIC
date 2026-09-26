@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { EPS } from '../lib/tracks';
 import { edgeFunctionUrl } from '../lib/fetchEdge';
@@ -303,12 +303,20 @@ function DetailField({ label, value, link }: { label: string; value: string | nu
   );
 }
 
+const PLAY_GRACE = 30;
+const VOTE_WINDOW = 60;
+const SONG_DURATION_MS = (PLAY_GRACE + VOTE_WINDOW) * 1000;
+
 function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefresh: () => void }) {
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [autoPlay, setAutoPlay] = useState(false);
+  const [autoPlayIndex, setAutoPlayIndex] = useState(0);
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sorted = [...items].sort((a, b) => a.queue_position - b.queue_position);
+  const currentlyPlaying = sorted.find(s => s.play_started_at);
 
   const clearSkip = async (item: UploadItem) => {
     setBusy(p => ({ ...p, [item.id]: true }));
@@ -353,6 +361,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
   };
 
   const startPlayback = async (item: UploadItem) => {
+    setAutoPlay(false);
     setBusy(p => ({ ...p, [item.id]: true }));
     // Clear any previously playing song
     const playing = sorted.filter(s => s.play_started_at && s.id !== item.id);
@@ -371,6 +380,108 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
     onRefresh();
   };
 
+  const stopAllPlayback = async () => {
+    setAutoPlay(false);
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+    const playing = sorted.filter(s => s.play_started_at);
+    await Promise.all(
+      playing.map(s =>
+        supabase.from('music_uploads').update({ play_started_at: null }).eq('id', s.id)
+      )
+    );
+    onRefresh();
+  };
+
+  const playQueueFromStart = async () => {
+    if (sorted.length === 0) return;
+    setAutoPlay(true);
+    setAutoPlayIndex(0);
+    // Clear all existing playback
+    const playing = sorted.filter(s => s.play_started_at);
+    await Promise.all(
+      playing.map(s =>
+        supabase.from('music_uploads').update({ play_started_at: null }).eq('id', s.id)
+      )
+    );
+    // Start the first song
+    const first = sorted[0];
+    await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', first.id);
+    onRefresh();
+  };
+
+  // Auto-advance: when autoPlay is on and a song's voting window ends, advance to the next
+  useEffect(() => {
+    if (!autoPlay || !currentlyPlaying) return;
+
+    const elapsed = Date.now() - new Date(currentlyPlaying.play_started_at!).getTime();
+    const remaining = SONG_DURATION_MS - elapsed;
+
+    if (remaining <= 0) {
+      // This song's window is over — advance to the next
+      const currentIdx = sorted.findIndex(s => s.id === currentlyPlaying.id);
+      const nextIdx = currentIdx + 1;
+
+      if (nextIdx >= sorted.length) {
+        // End of queue — stop auto-play
+        setAutoPlay(false);
+        supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
+        onRefresh();
+        return;
+      }
+
+      const next = sorted[nextIdx];
+      setAutoPlayIndex(nextIdx);
+
+      (async () => {
+        await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
+        await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', next.id);
+        onRefresh();
+      })();
+
+      return;
+    }
+
+    // Schedule the advance for when this song's window ends
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    advanceTimerRef.current = setTimeout(() => {
+      const currentIdx = sorted.findIndex(s => s.id === currentlyPlaying.id);
+      const nextIdx = currentIdx + 1;
+
+      if (nextIdx >= sorted.length) {
+        setAutoPlay(false);
+        supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
+        onRefresh();
+        return;
+      }
+
+      const next = sorted[nextIdx];
+      setAutoPlayIndex(nextIdx);
+
+      (async () => {
+        await supabase.from('music_uploads').update({ play_started_at: null }).eq('id', currentlyPlaying.id);
+        await supabase.from('music_uploads').update({ play_started_at: new Date().toISOString() }).eq('id', next.id);
+        onRefresh();
+      })();
+    }, remaining + 500); // small buffer to ensure we're past the window
+
+    return () => {
+      if (advanceTimerRef.current) {
+        clearTimeout(advanceTimerRef.current);
+        advanceTimerRef.current = null;
+      }
+    };
+  }, [autoPlay, currentlyPlaying?.id, currentlyPlaying?.play_started_at]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    };
+  }, []);
+
   if (sorted.length === 0) {
     return (
       <div className="text-center py-16">
@@ -388,7 +499,61 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
   };
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.06)' }}>
+    <div className="space-y-4">
+      {/* Play Queue controls */}
+      <div
+        className="rounded-2xl px-5 py-4 flex items-center justify-between gap-4 flex-wrap"
+        style={{ background: '#111', border: '1px solid rgba(236,72,153,0.15)' }}
+      >
+        <div className="flex items-center gap-3">
+          {currentlyPlaying ? (
+            <>
+              <div className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse" />
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-white">
+                  Now Playing: {currentlyPlaying.song_name}
+                </span>
+                <span className="text-xs text-zinc-500">
+                  {autoPlay
+                    ? `Auto-play ${autoPlayIndex + 1}/${sorted.length} — next song in ${PLAY_GRACE + VOTE_WINDOW}s`
+                    : 'Single song mode'}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-white">Queue Playback</span>
+              <span className="text-xs text-zinc-500">
+                Play the entire queue — each song gets {PLAY_GRACE}s grace + {VOTE_WINDOW}s voting
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={playQueueFromStart}
+            disabled={sorted.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-black text-sm transition-all hover:opacity-90 disabled:opacity-30"
+            style={{ background: 'linear-gradient(90deg, #ec4899, #2dd4bf)' }}
+          >
+            <Play size={14} />
+            Play Queue
+          </button>
+          {(currentlyPlaying || autoPlay) && (
+            <button
+              onClick={stopAllPlayback}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
+            >
+              <Square size={12} />
+              Stop All
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Queue list */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.06)' }}>
       <div className="divide-y divide-white/5">
         {sorted.map((item, i) => {
           const isBusy = busy[item.id];
@@ -558,6 +723,7 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );
