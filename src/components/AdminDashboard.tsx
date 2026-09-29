@@ -358,7 +358,10 @@ function MusicQueueManager({ items, onRefresh }: { items: UploadItem[]; onRefres
 
   const handleDelete = async (item: UploadItem) => {
     setBusy(p => ({ ...p, [item.id]: true }));
-    await supabase.from('music_uploads').delete().eq('id', item.id);
+    await supabase
+      .from('music_uploads')
+      .update({ played_at: new Date().toISOString(), play_started_at: null })
+      .eq('id', item.id);
     setBusy(p => ({ ...p, [item.id]: false }));
     setConfirmId(null);
     onRefresh();

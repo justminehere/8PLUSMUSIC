@@ -264,7 +264,6 @@ export default function MusicPlayer() {
           </div>
         ) : (
           <>
-            {/* Voting section — driven by admin's play button */}
             {playingSong && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 mb-8 relative overflow-hidden">
                 {voteBurst && (
@@ -594,20 +593,20 @@ export default function MusicPlayer() {
                 </div>
               )}
             </div>
-
-            {/* Chart link */}
-            <a
-              href="/chart"
-              className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl mb-8 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-              style={{
-                background: 'linear-gradient(90deg, #2dd4bf 0%, #ec4899 100%)',
-              }}
-            >
-              <Trophy size={20} className="text-black" />
-              <span className="font-bold text-black text-sm tracking-wide">View the 8Plus Music Charts</span>
-            </a>
           </>
         )}
+
+        {/* Chart link — always visible regardless of queue state */}
+        <a
+          href="/chart"
+          className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl mb-8 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+          style={{
+            background: 'linear-gradient(90deg, #2dd4bf 0%, #ec4899 100%)',
+          }}
+        >
+          <Trophy size={20} className="text-black" />
+          <span className="font-bold text-black text-sm tracking-wide">View the 8Plus Music Charts</span>
+        </a>
       </div>
     </div>
   );
