@@ -245,7 +245,7 @@ function TrackLinksManager({ trackLinks, onRefresh }: { trackLinks: TrackLink[];
                     value={draft}
                     onChange={e => setDraft(ep.id, track.title, e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleSave(ep.id, track.title); }}
-                    placeholder="Paste iTunes link..."
+                    placeholder="Paste YouTube link..."
                     className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-zinc-600 text-sm focus:outline-none focus:border-pink-500/40 transition-all"
                   />
 

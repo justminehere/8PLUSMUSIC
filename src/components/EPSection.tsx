@@ -231,7 +231,7 @@ function TrackRow({
           className="flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full opacity-60 group-hover:opacity-100 transition-opacity"
           style={{ background: `${coverColor}22`, color: coverColor, border: `1px solid ${coverColor}40` }}
         >
-          {playable ? 'Play' : 'iTunes'}
+          {playable ? 'Play' : 'Play'}
         </span>
       )}
 
@@ -240,11 +240,11 @@ function TrackRow({
     </div>
   );
 
-  if (linked) {
+  if (linked && itunesUrl) {
     return (
-      <a href={itunesUrl} target="_blank" rel="noopener noreferrer" className="block">
+      <button type="button" onClick={() => openTrackPopup(itunesUrl)} className="block w-full text-left">
         {inner}
-      </a>
+      </button>
     );
   }
 
