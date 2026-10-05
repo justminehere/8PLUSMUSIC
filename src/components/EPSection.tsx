@@ -23,6 +23,7 @@ interface Track {
 
 interface EPSectionProps {
   title: string;
+  epId: string;
   coverColor: string;
   coverAccent: string;
   tracks: Track[];
@@ -41,7 +42,7 @@ interface TrackTitleRow {
   track_title: string;
 }
 
-export default function EPSection({ title, coverColor, coverAccent, tracks, imageUrl, reverse }: EPSectionProps) {
+export default function EPSection({ title, epId, coverColor, coverAccent, tracks, imageUrl, reverse }: EPSectionProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [links, setLinks] = useState<Record<string, string>>({});
   const [titleMap, setTitleMap] = useState<Record<number, string>>({});
@@ -49,8 +50,8 @@ export default function EPSection({ title, coverColor, coverAccent, tracks, imag
   useEffect(() => {
     try {
       Promise.all([
-        supabase.from('track_links').select('track_title, itunes_url').eq('ep', title),
-        supabase.from('track_titles').select('ep, track_index, track_title').eq('ep', title),
+        supabase.from('track_links').select('track_title, itunes_url').eq('ep', epId),
+        supabase.from('track_titles').select('ep, track_index, track_title').eq('ep', epId),
       ]).then(([linksRes, titlesRes]) => {
         if (linksRes.data) {
           const map: Record<string, string> = {};
@@ -66,7 +67,7 @@ export default function EPSection({ title, coverColor, coverAccent, tracks, imag
     } catch {
       // Supabase not configured — tracks still render with hardcoded names
     }
-  }, [title]);
+  }, [epId]);
 
   useEffect(() => {
     const el = sectionRef.current;

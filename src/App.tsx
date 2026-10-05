@@ -101,6 +101,7 @@ export default function App() {
         <section id="releases">
           <EPSection
             title={dachshundEp1.label}
+            epId={dachshundEp1.id}
             coverColor={dachshundEp1.coverColor}
             coverAccent={dachshundEp1.coverAccent}
             tracks={dachshundEp1.tracks}
@@ -111,6 +112,7 @@ export default function App() {
 
           <EPSection
             title={dachshundEp2.label}
+            epId={dachshundEp2.id}
             coverColor={dachshundEp2.coverColor}
             coverAccent={dachshundEp2.coverAccent}
             tracks={dachshundEp2.tracks}
@@ -122,6 +124,7 @@ export default function App() {
 
           <EPSection
             title={bunny.label}
+            epId={bunny.id}
             coverColor={bunny.coverColor}
             coverAccent={bunny.coverAccent}
             tracks={bunny.tracks}
