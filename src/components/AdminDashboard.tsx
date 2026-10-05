@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { EPS } from '../lib/tracks';
 import { edgeFunctionUrl } from '../lib/fetchEdge';
-import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp, Play, Square, ExternalLink, Volume2 } from 'lucide-react';
+import { Mail, MessageCircle, LogOut, RefreshCw, X, Link2, Check, Trash2, Music, ArrowUp, ArrowDown, ChevronsUp, Play, Square, ExternalLink, Volume2, Pencil } from 'lucide-react';
 import ArcadeBackButton from './ArcadeBackButton';
 import { EmbeddedPlayer } from './EmbeddedPlayer';
 
@@ -51,6 +51,12 @@ interface TrackLink {
   ep: string;
   track_title: string;
   itunes_url: string;
+}
+
+interface TrackTitle {
+  ep: string;
+  track_index: number;
+  track_title: string;
 }
 
 interface UploadItem {
@@ -148,15 +154,20 @@ function Login({ onLogin }: { onLogin: () => void }) {
 }
 
 // ── Track Links Manager ───────────────────────────────────────────────────────
-function TrackLinksManager({ trackLinks, onRefresh }: { trackLinks: TrackLink[]; onRefresh: () => void }) {
-  // draft[ep][trackTitle] = current URL string being edited
+function TrackLinksManager({ trackLinks, trackTitles, onRefresh }: { trackLinks: TrackLink[]; trackTitles: TrackTitle[]; onRefresh: () => void }) {
   const [drafts, setDrafts]     = useState<Record<string, Record<string, string>>>({});
   const [saving, setSaving]     = useState<Record<string, boolean>>({});
   const [saved, setSaved]       = useState<Record<string, boolean>>({});
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
+  const [titleDrafts, setTitleDrafts] = useState<Record<string, string>>({});
+  const [renaming, setRenaming] = useState<Record<string, boolean>>({});
+  const [renamed, setRenamed]   = useState<Record<string, boolean>>({});
 
   const linkMap: Record<string, TrackLink> = {};
   trackLinks.forEach(l => { linkMap[`${l.ep}::${l.track_title}`] = l; });
+
+  const titleMap: Record<string, string> = {};
+  trackTitles.forEach(t => { titleMap[`${t.ep}::${t.track_index}`] = t.track_title; });
 
   const getDraft = (ep: string, title: string) => {
     return drafts[ep]?.[title] ?? linkMap[`${ep}::${title}`]?.itunes_url ?? '';
@@ -194,6 +205,19 @@ function TrackLinksManager({ trackLinks, onRefresh }: { trackLinks: TrackLink[];
     onRefresh();
   };
 
+  const handleRename = async (ep: string, index: number, originalTitle: string) => {
+    const titleKey = `${ep}::${index}`;
+    const newTitle = (titleDrafts[titleKey] ?? '').trim();
+    if (!newTitle || newTitle === originalTitle) return;
+    setRenaming(p => ({ ...p, [titleKey]: true }));
+    await trackLinksApi({ action: 'rename', ep, track_index: index, track_title: originalTitle, new_title: newTitle });
+    setRenaming(p => ({ ...p, [titleKey]: false }));
+    setRenamed(p => ({ ...p, [titleKey]: true }));
+    setTimeout(() => setRenamed(p => ({ ...p, [titleKey]: false })), 2000);
+    setTitleDrafts(prev => { const next = { ...prev }; delete next[titleKey]; return next; });
+    onRefresh();
+  };
+
   return (
     <div className="space-y-8">
       {EPS.map(ep => (
@@ -217,18 +241,23 @@ function TrackLinksManager({ trackLinks, onRefresh }: { trackLinks: TrackLink[];
           {/* Track rows */}
           <div className="divide-y divide-white/5">
             {ep.tracks.map((track, i) => {
-              const key = rowKey(ep.id, track.title);
+              const titleKey = `${ep.id}::${i}`;
+              const displayTitle = titleMap[titleKey] ?? track.title;
+              const key = rowKey(ep.id, displayTitle);
               const existing = linkMap[key];
-              const draft = getDraft(ep.id, track.title);
+              const draft = getDraft(ep.id, displayTitle);
               const isSaving  = saving[key];
               const isSaved   = saved[key];
               const isDeleting = deleting[key];
               const hasLink = !!existing;
+              const isRenaming = renaming[titleKey];
+              const isRenamed  = renamed[titleKey];
+              const titleDraft = titleDrafts[titleKey] ?? displayTitle;
 
               return (
-                <div key={track.title} className="px-5 py-3 flex items-center gap-3 flex-wrap sm:flex-nowrap">
-                  {/* Number + name */}
-                  <div className="flex items-center gap-3 min-w-0 flex-shrink-0 w-48">
+                <div key={titleKey} className="px-5 py-3 flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                  {/* Number + editable name */}
+                  <div className="flex items-center gap-2 min-w-0 flex-shrink-0 w-56">
                     <span
                       className="text-xs font-mono w-5 text-center flex-shrink-0"
                       style={{ color: ep.coverColor, opacity: 0.5 }}
@@ -236,22 +265,40 @@ function TrackLinksManager({ trackLinks, onRefresh }: { trackLinks: TrackLink[];
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <Music size={12} className="flex-shrink-0" style={{ color: ep.coverColor, opacity: 0.5 }} />
-                    <span className="text-sm text-zinc-300 truncate font-medium">{track.title}</span>
+                    <input
+                      type="text"
+                      value={titleDraft}
+                      onChange={e => setTitleDrafts(prev => ({ ...prev, [titleKey]: e.target.value }))}
+                      onKeyDown={e => { if (e.key === 'Enter') handleRename(ep.id, i, displayTitle); }}
+                      className="flex-1 min-w-0 bg-transparent border-b border-transparent hover:border-white/10 focus:border-pink-500/40 text-sm text-zinc-200 font-medium px-1 py-0.5 focus:outline-none transition-all"
+                    />
+                    <button
+                      onClick={() => handleRename(ep.id, i, displayTitle)}
+                      disabled={isRenaming || !titleDraft.trim() || titleDraft.trim() === displayTitle}
+                      className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all disabled:opacity-20 hover:opacity-90"
+                      style={{ background: isRenamed ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.05)' }}
+                      title="Save track name"
+                    >
+                      {isRenamed
+                        ? <Check size={12} className="text-green-400" />
+                        : <Pencil size={11} color={isRenaming ? '#999' : '#888'} />
+                      }
+                    </button>
                   </div>
 
                   {/* URL input */}
                   <input
                     type="url"
                     value={draft}
-                    onChange={e => setDraft(ep.id, track.title, e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSave(ep.id, track.title); }}
+                    onChange={e => setDraft(ep.id, displayTitle, e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSave(ep.id, displayTitle); }}
                     placeholder="Paste YouTube link..."
                     className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-zinc-600 text-sm focus:outline-none focus:border-pink-500/40 transition-all"
                   />
 
                   {/* Save button */}
                   <button
-                    onClick={() => handleSave(ep.id, track.title)}
+                    onClick={() => handleSave(ep.id, displayTitle)}
                     disabled={!draft.trim() || isSaving}
                     className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all disabled:opacity-30 hover:opacity-90"
                     style={{
@@ -270,7 +317,7 @@ function TrackLinksManager({ trackLinks, onRefresh }: { trackLinks: TrackLink[];
                   {/* Delete button (only if link exists) */}
                   {hasLink && (
                     <button
-                      onClick={() => handleDelete(ep.id, track.title)}
+                      onClick={() => handleDelete(ep.id, displayTitle)}
                       disabled={isDeleting}
                       className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center bg-white/5 hover:bg-red-500/20 transition-all disabled:opacity-30"
                       title="Remove link"
@@ -783,21 +830,24 @@ export default function AdminDashboard() {
   const [contacts, setContacts]   = useState<Contact[]>([]);
   const [chatMsgs, setChatMsgs]   = useState<ChatMessage[]>([]);
   const [trackLinks, setTrackLinks] = useState<TrackLink[]>([]);
+  const [trackTitles, setTrackTitles] = useState<TrackTitle[]>([]);
   const [queueItems, setQueueItems] = useState<UploadItem[]>([]);
   const [loading, setLoading]     = useState(false);
   const [expanded, setExpanded]   = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const [c, m, l, q] = await Promise.all([
+    const [c, m, l, t, q] = await Promise.all([
       supabase.from('contacts').select('*').order('created_at', { ascending: false }),
       supabase.from('chat_messages').select('*').order('created_at', { ascending: false }).limit(200),
       supabase.from('track_links').select('*').order('ep').order('track_title'),
+      supabase.from('track_titles').select('*').order('ep').order('track_index'),
       supabase.from('music_uploads').select('*').is('played_at', null).order('queue_position', { ascending: true }),
     ]);
     if (c.data) setContacts(c.data as Contact[]);
     if (m.data) setChatMsgs(m.data as ChatMessage[]);
     if (l.data) setTrackLinks(l.data as TrackLink[]);
+    if (t.data) setTrackTitles(t.data as TrackTitle[]);
     if (q.data) setQueueItems(q.data as UploadItem[]);
     setLoading(false);
   };
@@ -912,7 +962,7 @@ export default function AdminDashboard() {
 
         {/* ── Track Links tab ── */}
         {tab === 'links' && (
-          <TrackLinksManager trackLinks={trackLinks} onRefresh={load} />
+          <TrackLinksManager trackLinks={trackLinks} trackTitles={trackTitles} onRefresh={load} />
         )}
 
         {/* ── Contacts tab ── */}

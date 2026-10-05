@@ -35,24 +35,36 @@ interface TrackLink {
   itunes_url: string;
 }
 
+interface TrackTitleRow {
+  ep: string;
+  track_index: number;
+  track_title: string;
+}
+
 export default function EPSection({ title, coverColor, coverAccent, tracks, imageUrl, reverse }: EPSectionProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [links, setLinks] = useState<Record<string, string>>({});
+  const [titleMap, setTitleMap] = useState<Record<number, string>>({});
 
   useEffect(() => {
     try {
-      supabase
-        .from('track_links')
-        .select('track_title, itunes_url')
-        .eq('ep', title)
-        .then(({ data }) => {
-          if (!data) return;
+      Promise.all([
+        supabase.from('track_links').select('track_title, itunes_url').eq('ep', title),
+        supabase.from('track_titles').select('ep, track_index, track_title').eq('ep', title),
+      ]).then(([linksRes, titlesRes]) => {
+        if (linksRes.data) {
           const map: Record<string, string> = {};
-          (data as TrackLink[]).forEach(l => { map[l.track_title] = l.itunes_url; });
+          (linksRes.data as TrackLink[]).forEach(l => { map[l.track_title] = l.itunes_url; });
           setLinks(map);
-        });
+        }
+        if (titlesRes.data) {
+          const map: Record<number, string> = {};
+          (titlesRes.data as TrackTitleRow[]).forEach(t => { map[t.track_index] = t.track_title; });
+          setTitleMap(map);
+        }
+      });
     } catch {
-      // Supabase not configured — tracks still render without iTunes links
+      // Supabase not configured — tracks still render with hardcoded names
     }
   }, [title]);
 
@@ -123,11 +135,11 @@ export default function EPSection({ title, coverColor, coverAccent, tracks, imag
             {tracks.map((track, i) => (
               <TrackRow
                 key={i}
-                track={track}
+                track={{ ...track, title: titleMap[i] ?? track.title }}
                 index={i}
                 coverColor={coverColor}
                 epCoverUrl={imageUrl}
-                itunesUrl={links[track.title]}
+                itunesUrl={links[titleMap[i] ?? track.title]}
                 onPlay={track.url ? () => openTrackPopup(track.url!) : undefined}
               />
             ))}

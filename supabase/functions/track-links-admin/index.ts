@@ -28,7 +28,7 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  let body: { action: string; ep?: string; track_title?: string; itunes_url?: string };
+  let body: { action: string; ep?: string; track_title?: string; itunes_url?: string; track_index?: number; new_title?: string };
   try {
     body = await req.json();
   } catch {
@@ -38,7 +38,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const { action, ep, track_title, itunes_url } = body;
+  const { action, ep, track_title, itunes_url, track_index, new_title } = body;
 
   if (!action || !ep || !track_title) {
     return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -82,6 +82,40 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Rename a track: upsert track_titles row and update track_links to match
+  if (action === "rename") {
+    if (ep === undefined || track_index === undefined || !new_title) {
+      return new Response(JSON.stringify({ error: "ep, track_index, and new_title required for rename" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { error: upsertErr } = await supabase
+      .from("track_titles")
+      .upsert({ ep, track_index, track_title: new_title }, { onConflict: "ep,track_index" });
+
+    if (upsertErr) {
+      return new Response(JSON.stringify({ error: upsertErr.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // If a link exists for the old title, update the track_title to match
+    if (track_title) {
+      await supabase
+        .from("track_links")
+        .update({ track_title: new_title })
+        .eq("ep", ep)
+        .eq("track_title", track_title);
+    }
+
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
