@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { EPS } from './lib/tracks';
 import Hero from './components/Hero';
 import EPSection from './components/EPSection';
@@ -55,6 +55,12 @@ export default function App() {
       window.location.href = '/' + target;
       return;
     }
+    // If we're not on the homepage, navigate home with section hash
+    const path = window.location.pathname;
+    if (path !== '/' && path !== '') {
+      window.location.href = '/#' + target;
+      return;
+    }
     requestAnimationFrame(() => {
       const el = document.getElementById(target);
       if (el) {
@@ -63,6 +69,16 @@ export default function App() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     });
+  }, []);
+
+  // Scroll to section when homepage loads with a hash (e.g. /#about)
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (!hash) return;
+    const el = document.getElementById(hash);
+    if (el) {
+      requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth' }));
+    }
   }, []);
 
   if (isAdminRoute()) {
