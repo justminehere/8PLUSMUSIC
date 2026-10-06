@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Heart, Trophy, Zap, Crown, Star, Music, Gamepad2,
   Radio, Award, Lock, Play, Sparkles, Instagram, Facebook, Youtube, Music2,
-  MessageCircle, ShoppingBag,
+  MessageCircle, ShoppingBag, Calendar, Search,
 } from 'lucide-react';
 import ArcadeBackButton from './ArcadeBackButton';
 import FlickeringStars from './FlickeringStars';
@@ -178,6 +178,9 @@ export default function FanPage() {
   const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'year'>('week');
   const [qrUnavailable, setQrUnavailable] = useState(false);
   const [chatTz, setChatTz] = useState('UTC');
+  const [chatDate, setChatDate] = useState('');
+  const [chatArtist, setChatArtist] = useState('');
+  const [showTz, setShowTz] = useState('UTC');
 
   // Check if user already became a fan (localStorage)
   useEffect(() => {
@@ -305,88 +308,182 @@ export default function FanPage() {
           <h3 className="font-press-start text-xs text-center text-zinc-400 tracking-widest mb-6">
             CHOOSE YOUR ACTIVITY
           </h3>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Live Voting */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* BOX 1 — VOTING (sound waves pulsing) */}
             <a
               href="/player"
               className="fan-activity-tile fan-pixel-border"
               style={{ borderColor: liveActive ? '#ec4899' : 'rgba(255,255,255,0.1)', background: liveActive ? 'rgba(236,72,153,0.06)' : 'rgba(0,0,0,0.4)' }}
             >
-              <Radio size={24} style={{ color: liveActive ? '#ec4899' : '#52525b' }} className="mx-auto mb-3" />
-              <p className="text-[10px] text-white mb-1">LIVE VOTING</p>
+              <Radio size={24} style={{ color: liveActive ? '#ec4899' : '#52525b' }} className="fan-icon-pulse mx-auto mb-3" />
+              <p className="text-[10px] text-white mb-1">VOTING</p>
               <p className="text-[8px] mb-3" style={{ color: liveActive ? '#ec4899' : '#52525b' }}>
                 {liveActive ? 'LIVE VOTING ACTIVE' : 'LIVESTREAM OFFLINE'}
               </p>
               <span className="text-[9px] font-bold" style={{ color: liveActive ? '#ec4899' : '#52525b' }}>
-                {liveActive ? '► VOTE NOW' : '► CHECK CHARTS'}
+                {liveActive ? '► PUT YOUR VOTES COUNT' : '► PUT YOUR VOTES COUNT'}
               </span>
             </a>
 
-            {/* Charts */}
+            {/* BOX 2 — 8PLUSMUSIC LIVE CHARTS (spinning trophy) */}
             <a
               href="/chart"
               className="fan-activity-tile fan-pixel-border"
               style={{ borderColor: 'rgba(45,212,191,0.3)', background: 'rgba(45,212,191,0.04)' }}
             >
-              <Trophy size={24} className="text-teal-400 mx-auto mb-3" />
-              <p className="text-[10px] text-white mb-1">8PLUSMUSIC CHARTS</p>
+              <Trophy size={24} className="fan-icon-spin text-teal-400 mx-auto mb-3" />
+              <p className="text-[10px] text-white mb-1">8PLUSMUSIC LIVE CHARTS</p>
               <p className="text-[8px] text-zinc-500 mb-3">WEEK · MONTH · YEAR</p>
-              <span className="text-[9px] font-bold text-teal-400">► VIEW CHARTS</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-bold text-teal-400">► VIEW LIVE CHARTS</span>
+                <span className="text-[9px] font-bold text-teal-400">► 8PLUSMUSIC EP SONGS ONLY</span>
+              </div>
             </a>
 
-            {/* VIP Room */}
+            {/* BOX 3 — VIP MEMBER ROOM (crown breathing) */}
             <a
               href="#vip"
               className="fan-activity-tile fan-pixel-border"
               style={{ borderColor: 'rgba(251,191,36,0.3)', background: 'rgba(251,191,36,0.04)' }}
             >
-              <Crown size={24} className="text-amber-400 mx-auto mb-3" />
+              <Crown size={24} className="fan-icon-breathe text-amber-400 mx-auto mb-3" />
               <p className="text-[10px] text-white mb-1">VIP MEMBER ROOM</p>
               <p className="text-[8px] text-zinc-500 mb-3">FULL SONGS &amp; MORE</p>
               <span className="text-[9px] font-bold text-amber-400">► VIP ACCESS</span>
             </a>
 
-            {/* Badges & Levels — split into two links */}
+            {/* BOX 4 — BADGES & LEVELS (badge heartbeat) */}
             <a
               href="#levels"
               className="fan-activity-tile fan-pixel-border"
               style={{ borderColor: 'rgba(236,72,153,0.3)', background: 'rgba(236,72,153,0.04)' }}
             >
-              <Award size={24} className="text-pink-400 mx-auto mb-3" />
+              <Award size={24} className="fan-icon-heartbeat text-pink-400 mx-auto mb-3" />
               <p className="text-[10px] text-white mb-1">BADGES &amp; LEVELS</p>
-              <p className="text-[8px] text-zinc-500 mb-3">ENJOY A JOURNEY THROUGH OUR 8PLUS WORLDS</p>
+              <p className="text-[8px] text-zinc-500 mb-3">EXPERIENCE OUR 8PLUS MUSICAL WORLDS</p>
               <div className="flex flex-col gap-1">
-                <span className="text-[9px] font-bold text-pink-400">► PLAYFUL LEVELS</span>
-                <span className="text-[9px] font-bold text-pink-400">► BADGES</span>
+                <span className="text-[9px] font-bold text-pink-400">► LEVEL BY LEVEL</span>
+                <span className="text-[9px] font-bold text-pink-400">► GOT BADGES?</span>
               </div>
             </a>
-          </div>
 
-          {/* ── OFFLINE VOTING + 8PLUSMUSIC CHARTS ── */}
-          <div className="grid grid-cols-2 gap-4 mt-4">
-            {/* Offline Voting */}
-            <a
-              href="/chart"
+            {/* BOX 5 — VIP MEMBER CHATROOMS (chat icon pulsing) */}
+            <div
               className="fan-activity-tile fan-pixel-border"
-              style={{ borderColor: 'rgba(45,212,191,0.3)', background: 'rgba(45,212,191,0.04)' }}
+              style={{ borderColor: 'rgba(251,191,36,0.3)', background: 'rgba(251,191,36,0.04)' }}
             >
-              <Trophy size={24} className="text-teal-400 mx-auto mb-3" />
-              <p className="text-[10px] text-white mb-1">OFFLINE VOTING</p>
-              <p className="text-[8px] text-zinc-500 mb-3">NAME LIVESTREAM SONGS OFFLINE</p>
-              <span className="text-[9px] font-bold text-teal-400">► CHECK CHARTS</span>
-            </a>
+              <div className="flex items-center justify-center mb-3 gap-2">
+                <Crown size={20} className="fan-icon-breathe text-amber-400" />
+                <svg width="40" height="24" viewBox="0 0 40 24" className="fan-icon-pulse">
+                  <path d="M0,12 Q5,4 10,12 T20,12" stroke="#22c55e" strokeWidth="2" fill="none" />
+                  <path d="M20,12 Q25,20 30,12 T40,12" stroke="#22c55e" strokeWidth="2" fill="none" />
+                </svg>
+              </div>
+              <p className="text-[10px] text-white mb-1 text-center">VIP MEMBER CHATROOMS</p>
+              <p className="text-[8px] text-zinc-500 mb-3 text-center">
+                JOIN CONTINUOUS, DATED, HOSTED CHATROOMS
+              </p>
 
-            {/* 8PlusMusic Charts */}
-            <a
-              href="/chart"
+              {/* Date/artist search input */}
+              <div className="flex flex-col gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <Calendar size={12} className="text-amber-400 flex-shrink-0" />
+                  <input
+                    type="date"
+                    value={chatDate}
+                    onChange={e => setChatDate(e.target.value)}
+                    className="fan-pixel-border rounded bg-black text-white text-[10px] px-2 py-1.5 outline-none flex-1"
+                    style={{ borderColor: 'rgba(251,191,36,0.3)', colorScheme: 'dark' }}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Search size={12} className="text-amber-400 flex-shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="WHICH ARTIST DO YOU WANT TO CHAT WITH?"
+                    value={chatArtist}
+                    onChange={e => setChatArtist(e.target.value)}
+                    className="fan-pixel-border rounded bg-black text-white text-[9px] px-2 py-1.5 outline-none flex-1"
+                    style={{ borderColor: 'rgba(251,191,36,0.3)' }}
+                  />
+                </div>
+              </div>
+
+              {/* Text links list */}
+              <div className="text-left space-y-1.5 mb-3">
+                <a href="#chat-8plus" className="block text-[9px] text-amber-400 hover:text-amber-300">► ENTER THE 8PLUSMUSIC EXCLUSIVE ROOM</a>
+                <a href="#chat-livestream" className="block text-[9px] text-amber-400 hover:text-amber-300">► ENTER THE LIVESTREAM SONGS EXCLUSIVE ROOM</a>
+                <a href="#chat-junior" className="block text-[9px] text-amber-400 hover:text-amber-300">► DATED JUNIOR CHAT MEETINGS — HOSTED BY FAN KID &amp; HOSTING PARENT (PARENTS ARE KYC-ED)</a>
+              </div>
+
+              <div className="text-center">
+                <a
+                  href="#chatrooms-list"
+                  className="text-[9px] font-bold text-amber-400"
+                >
+                  ► FIND YOUR CHATROOM
+                </a>
+              </div>
+            </div>
+
+            {/* BOX 6 — UPLOAD YOUR MUSIC (spinning gold coin / yin-yang) */}
+            <div
               className="fan-activity-tile fan-pixel-border"
-              style={{ borderColor: 'rgba(45,212,191,0.3)', background: 'rgba(45,212,191,0.04)' }}
+              style={{ borderColor: 'rgba(251,191,36,0.3)', background: 'rgba(251,191,36,0.04)' }}
             >
-              <Trophy size={24} className="text-teal-400 mx-auto mb-3" />
-              <p className="text-[10px] text-white mb-1">8PLUSMUSIC CHARTS</p>
-              <p className="text-[8px] text-zinc-500 mb-3">WEEK · MONTH · YEAR</p>
-              <span className="text-[9px] font-bold text-teal-400">► VIEW CHARTS</span>
-            </a>
+              <div className="flex justify-center mb-3" style={{ perspective: '100px' }}>
+                <div className="fan-icon-coin" style={{ width: '28px', height: '28px' }}>
+                  <svg viewBox="0 0 100 100" width="28" height="28">
+                    <circle cx="50" cy="50" r="48" fill="#fbbf24" stroke="#d97706" strokeWidth="2" />
+                    <path d="M50,2 A48,48 0 0,1 50,98 A24,24 0 0,1 50,50 A24,24 0 0,0 50,2 Z" fill="#1a1a1a" />
+                    <circle cx="50" cy="26" r="6" fill="#1a1a1a" />
+                    <circle cx="50" cy="74" r="6" fill="#fbbf24" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-[10px] text-white mb-1 text-center">UPLOAD YOUR MUSIC</p>
+              <p className="text-[8px] text-zinc-500 mb-3 text-center">
+                JOIN THE QUEUE FOR THE NEXT SHOW
+              </p>
+
+              {/* Show time + timezone dropdown */}
+              <div className="flex flex-col gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-press-start text-[8px] text-amber-400 flex-shrink-0">NEXT SHOW:</span>
+                  <span className="font-press-start text-[8px] text-white">{convertTz(5, 20, showTz).day} {convertTz(5, 20, showTz).time}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-press-start text-[8px] text-amber-400 flex-shrink-0">AFTER:</span>
+                  <span className="font-press-start text-[8px] text-white">{convertTz(6, 20, showTz).day} {convertTz(6, 20, showTz).time}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="font-press-start text-[8px] text-amber-400 flex-shrink-0">TZ:</label>
+                  <select
+                    value={showTz}
+                    onChange={e => setShowTz(e.target.value)}
+                    className="fan-pixel-border rounded bg-black text-white text-[9px] px-2 py-1.5 outline-none flex-1"
+                    style={{ borderColor: 'rgba(251,191,36,0.3)' }}
+                  >
+                    {TIMEZONES.map(tz => (
+                      <option key={tz.id} value={tz.id}>{tz.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Live / manual link */}
+              <div className="text-center">
+                <a
+                  href="/upload"
+                  className={`text-[9px] font-bold ${liveActive ? 'fan-blink' : ''}`}
+                  style={{ color: liveActive ? '#ec4899' : '#fbbf24' }}
+                >
+                  {liveActive ? '● SHOW IS LIVE — VOTE &amp; WATCH TIKTOK' : '► UPLOAD &amp; JOIN QUEUE'}
+                </a>
+              </div>
+            </div>
+
           </div>
         </div>
 

@@ -1312,10 +1312,60 @@ body {
   .fan-level-unlock,
   .fan-badge-pop,
   .fan-scanline,
-  .fan-glitch-flash {
+  .fan-glitch-flash,
+  .fan-icon-pulse,
+  .fan-icon-spin,
+  .fan-icon-breathe,
+  .fan-icon-heartbeat,
+  .fan-icon-chatpulse,
+  .fan-icon-coin {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
     filter: none !important;
   }
 }
+
+/* ── Box icon animations ── */
+@keyframes fanIconPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.85; }
+}
+.fan-icon-pulse { animation: fanIconPulse 1.2s ease-in-out infinite; }
+
+@keyframes fanIconSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.fan-icon-spin { animation: fanIconSpin 3s linear infinite; }
+
+@keyframes fanIconBreathe {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.25); }
+  60% { transform: scale(0.9); }
+}
+.fan-icon-breathe { animation: fanIconBreathe 2.5s ease-in-out infinite; }
+
+@keyframes fanIconHeartbeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.3); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.2); }
+  60% { transform: scale(1); }
+}
+.fan-icon-heartbeat { animation: fanIconHeartbeat 1.5s ease-in-out infinite; }
+
+@keyframes fanIconChatPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  20% { transform: scale(1.18); opacity: 0.9; }
+  40% { transform: scale(1.05); opacity: 1; }
+  60% { transform: scale(1.22); opacity: 0.85; }
+  80% { transform: scale(1.08); opacity: 1; }
+}
+.fan-icon-chatpulse { animation: fanIconChatPulse 2s ease-in-out infinite; }
+
+@keyframes fanIconCoin {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(360deg); }
+}
+.fan-icon-coin { animation: fanIconCoin 2.5s linear infinite; }
