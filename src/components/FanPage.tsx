@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Heart, Trophy, Zap, Crown, Star, Music, Gamepad2,
   Radio, Award, Lock, Play, Sparkles, Instagram, Facebook, Youtube, Music2,
+  MessageCircle, ShoppingBag,
 } from 'lucide-react';
 import ArcadeBackButton from './ArcadeBackButton';
 import FlickeringStars from './FlickeringStars';
@@ -57,6 +58,54 @@ const SOCIALS = [
   { label: 'YOUTUBE', href: 'https://www.youtube.com/channel/UCkmp1KlrwUYSxiHc9wFguvw', color: '#ef4444', icon: Youtube },
   { label: 'SPOTIFY', href: 'https://open.spotify.com/artist/7tClU9LaGgN6jWYy5OuS2R', color: '#22c55e', icon: Music2 },
 ];
+
+const TIMEZONES: { id: string; label: string; offset: number }[] = [
+  { id: 'UTC', label: 'UTC (GMT+0)', offset: 0 },
+  { id: 'EST', label: 'Eastern Time (GMT-5)', offset: -5 },
+  { id: 'CST', label: 'Central Time (GMT-6)', offset: -6 },
+  { id: 'MST', label: 'Mountain Time (GMT-7)', offset: -7 },
+  { id: 'PST', label: 'Pacific Time (GMT-8)', offset: -8 },
+  { id: 'AKST', label: 'Alaska Time (GMT-9)', offset: -9 },
+  { id: 'HST', label: 'Hawaii Time (GMT-10)', offset: -10 },
+  { id: 'BST', label: 'British Summer Time (GMT+1)', offset: 1 },
+  { id: 'CET', label: 'Central European Time (GMT+1)', offset: 1 },
+  { id: 'EET', label: 'Eastern European Time (GMT+2)', offset: 2 },
+  { id: 'MSK', label: 'Moscow Time (GMT+3)', offset: 3 },
+  { id: 'GST', label: 'Gulf Time (GMT+4)', offset: 4 },
+  { id: 'IST', label: 'India Time (GMT+5:30)', offset: 5.5 },
+  { id: 'BST_ASIA', label: 'Bangkok Time (GMT+7)', offset: 7 },
+  { id: 'CST_ASIA', label: 'China Time (GMT+8)', offset: 8 },
+  { id: 'JST', label: 'Japan Time (GMT+9)', offset: 9 },
+  { id: 'AEST', label: 'Australian Eastern (GMT+10)', offset: 10 },
+  { id: 'NZST', label: 'New Zealand (GMT+12)', offset: 12 },
+  { id: 'BRT', label: 'Brazil Time (GMT-3)', offset: -3 },
+  { id: 'ART', label: 'Argentina Time (GMT-3)', offset: -3 },
+];
+
+const CHATROOMS: { id: string; title: string; desc: string; utcDay: number; utcHour: number }[] = [
+  { id: 'cr1', title: 'SONG TALK', desc: 'Discuss the latest 8PlusMusic releases', utcDay: 2, utcHour: 19 },
+  { id: 'cr2', title: 'CHART CHAT', desc: 'Break down the weekly charts and vote', utcDay: 4, utcHour: 20 },
+  { id: 'cr3', title: 'BUNNY CREW HANGOUT', desc: 'Casual fan chat and sticker sharing', utcDay: 6, utcHour: 18 },
+  { id: 'cr4', title: 'PRODUCTION CORNER', desc: 'Behind the scenes of EP creation', utcDay: 0, utcHour: 21 },
+];
+
+const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+function convertTz(utcDay: number, utcHour: number, tzId: string): { day: string; time: string } {
+  const tz = TIMEZONES.find(t => t.id === tzId);
+  const offset = tz ? tz.offset : 0;
+  let totalHours = utcHour + offset;
+  let day = utcDay;
+
+  while (totalHours < 0) { totalHours += 24; day = (day - 1 + 7) % 7; }
+  while (totalHours >= 24) { totalHours -= 24; day = (day + 1) % 7; }
+
+  const h = Math.floor(totalHours);
+  const m = totalHours % 1 !== 0 ? '30' : '00';
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  return { day: DAYS[day], time: `${hour12}:${m} ${ampm}` };
+}
 
 function EqualizerBars({ color, bars = 5 }: { color: string; bars?: number }) {
   return (
@@ -128,6 +177,7 @@ export default function FanPage() {
   const [showLevel1, setShowLevel1] = useState(false);
   const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'year'>('week');
   const [qrUnavailable, setQrUnavailable] = useState(false);
+  const [chatTz, setChatTz] = useState('UTC');
 
   // Check if user already became a fan (localStorage)
   useEffect(() => {
@@ -292,20 +342,50 @@ export default function FanPage() {
             >
               <Crown size={24} className="text-amber-400 mx-auto mb-3" />
               <p className="text-[10px] text-white mb-1">VIP MEMBER ROOM</p>
-              <p className="text-[8px] text-zinc-500 mb-3">FULL SONGS + VIDEOS</p>
+              <p className="text-[8px] text-zinc-500 mb-3">FULL SONGS &amp; MORE</p>
               <span className="text-[9px] font-bold text-amber-400">► VIP ACCESS</span>
             </a>
 
-            {/* Badges & Levels */}
+            {/* Badges & Levels — split into two links */}
             <a
               href="#levels"
               className="fan-activity-tile fan-pixel-border"
               style={{ borderColor: 'rgba(236,72,153,0.3)', background: 'rgba(236,72,153,0.04)' }}
             >
               <Award size={24} className="text-pink-400 mx-auto mb-3" />
-              <p className="text-[10px] text-white mb-1">BADGES & LEVELS</p>
-              <p className="text-[8px] text-zinc-500 mb-3">SEE YOUR FAN JOURNEY</p>
-              <span className="text-[9px] font-bold text-pink-400">► VIEW LEVELS</span>
+              <p className="text-[10px] text-white mb-1">BADGES &amp; LEVELS</p>
+              <p className="text-[8px] text-zinc-500 mb-3">ENJOY A JOURNEY THROUGH OUR 8PLUS WORLDS</p>
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-bold text-pink-400">► PLAYFUL LEVELS</span>
+                <span className="text-[9px] font-bold text-pink-400">► BADGES</span>
+              </div>
+            </a>
+          </div>
+
+          {/* ── OFFLINE VOTING + 8PLUSMUSIC CHARTS ── */}
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            {/* Offline Voting */}
+            <a
+              href="/chart"
+              className="fan-activity-tile fan-pixel-border"
+              style={{ borderColor: 'rgba(45,212,191,0.3)', background: 'rgba(45,212,191,0.04)' }}
+            >
+              <Trophy size={24} className="text-teal-400 mx-auto mb-3" />
+              <p className="text-[10px] text-white mb-1">OFFLINE VOTING</p>
+              <p className="text-[8px] text-zinc-500 mb-3">NAME LIVESTREAM SONGS OFFLINE</p>
+              <span className="text-[9px] font-bold text-teal-400">► CHECK CHARTS</span>
+            </a>
+
+            {/* 8PlusMusic Charts */}
+            <a
+              href="/chart"
+              className="fan-activity-tile fan-pixel-border"
+              style={{ borderColor: 'rgba(45,212,191,0.3)', background: 'rgba(45,212,191,0.04)' }}
+            >
+              <Trophy size={24} className="text-teal-400 mx-auto mb-3" />
+              <p className="text-[10px] text-white mb-1">8PLUSMUSIC CHARTS</p>
+              <p className="text-[8px] text-zinc-500 mb-3">WEEK · MONTH · YEAR</p>
+              <span className="text-[9px] font-bold text-teal-400">► VIEW CHARTS</span>
             </a>
           </div>
         </div>
@@ -557,13 +637,13 @@ export default function FanPage() {
               <h3 className="font-press-start text-xs text-amber-400 tracking-widest">VIP MEMBER ROOM</h3>
             </div>
             <p className="text-sm text-zinc-400 mb-4">
-              Full selected songs + videos from the 8PlusMusic EP collection. Available to VIP Member Bunnies only.
+              Full selected songs from the 8PlusMusic EP collection. Available to VIP Member Bunnies only.
             </p>
             <ul className="space-y-2 mb-6">
               {[
                 'VIP MEMBER BUNNY badge',
                 'VIP Members Listening Room',
-                'Full songs + videos (admin selected)',
+                'Full songs (admin selected)',
                 'Selected EP collection content',
                 'Special fan content',
                 'Additional member activities',
@@ -629,7 +709,195 @@ export default function FanPage() {
 
         <div className="arcade-divider max-w-2xl mx-auto mb-12" />
 
-        {/* ── OUR SOCIALS ── */}
+        {/* ── YOUR STATUS (logged-in user level & badges) ── */}
+        <div id="badges" className="mb-12">
+          <h3 className="font-press-start text-xs text-center text-zinc-400 tracking-widest mb-6">
+            YOUR STATUS
+          </h3>
+          <div
+            className="fan-pixel-border rounded-lg p-6 text-center"
+            style={{ borderColor: 'rgba(236,72,153,0.3)', background: 'rgba(236,72,153,0.04)' }}
+          >
+            {becomeFan ? (
+              <>
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <Heart size={28} className="text-pink-400 fan-badge-pop" />
+                  <div>
+                    <p className="font-press-start text-[10px] text-pink-400">CURRENT LEVEL</p>
+                    <p className="font-press-start text-sm text-white">LV.1 — LIVE FAN</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  {LEVELS.filter(l => l.status === 'unlocked' || (l.num === 1 && becomeFan)).map(l => {
+                    const Icon = l.icon;
+                    return (
+                      <div
+                        key={l.num}
+                        className="fan-pixel-border rounded-lg px-3 py-2 flex items-center gap-2"
+                        style={{ borderColor: l.color, background: `${l.color}10` }}
+                      >
+                        <Icon size={16} style={{ color: l.color }} />
+                        <span className="font-press-start text-[8px] text-white">{l.badge}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-zinc-500 mt-4">
+                  Keep voting and participating to unlock more levels and badges!
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-zinc-400">
+                Press BECOME A FAN to start your journey and earn your first badge.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="arcade-divider max-w-2xl mx-auto mb-12" />
+
+        {/* ── BADGE GUIDE ── */}
+        <div className="mb-12">
+          <h3 className="font-press-start text-xs text-center text-zinc-400 tracking-widest mb-6">
+            BADGE GUIDE
+          </h3>
+          <div className="space-y-3">
+            {LEVELS.map(level => {
+              const Icon = level.icon;
+              const isUnlocked = level.status === 'unlocked' || (level.num === 1 && becomeFan);
+              return (
+                <div
+                  key={level.num}
+                  className="fan-pixel-border rounded-lg p-4 flex items-center gap-4"
+                  style={{
+                    borderColor: isUnlocked ? level.color : 'rgba(255,255,255,0.08)',
+                    background: isUnlocked ? `${level.color}08` : 'rgba(0,0,0,0.3)',
+                  }}
+                >
+                  <div
+                    className="flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center fan-pixel-border"
+                    style={{
+                      borderColor: isUnlocked ? level.color : 'rgba(255,255,255,0.1)',
+                      background: isUnlocked ? `${level.color}15` : 'rgba(0,0,0,0.4)',
+                    }}
+                  >
+                    <Icon size={20} style={{ color: isUnlocked ? level.color : '#3f3f46' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-press-start text-[10px] mb-1" style={{ color: isUnlocked ? level.color : '#52525b' }}>
+                      {level.badge}
+                    </p>
+                    <p className="text-xs text-zinc-400 leading-relaxed">{level.desc}</p>
+                    {level.price && (
+                      <span className="font-press-start text-[7px] mt-1 inline-block px-2 py-0.5 rounded" style={{ background: `${level.color}15`, color: level.color }}>
+                        {level.price}
+                      </span>
+                    )}
+                  </div>
+                  {isUnlocked ? (
+                    <span className="font-press-start text-[8px] text-teal-400 flex-shrink-0">UNLOCKED</span>
+                  ) : (
+                    <Lock size={14} className="text-zinc-700 flex-shrink-0" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="arcade-divider max-w-2xl mx-auto mb-12" />
+
+        {/* ── CHAT ROOMS ── */}
+        <div className="mb-12">
+          <h3 className="font-press-start text-xs text-center text-zinc-400 tracking-widest mb-6">
+            HOSTED CHATROOMS — ALL ABOUT MUSIC
+          </h3>
+          <div
+            className="fan-pixel-border rounded-lg p-6"
+            style={{ borderColor: 'rgba(45,212,191,0.3)', background: 'rgba(45,212,191,0.03)' }}
+          >
+            <p className="text-sm text-zinc-400 mb-4">
+              Join scheduled chatrooms hosted by the 8PlusMusic crew. All times shown in your selected timezone.
+            </p>
+
+            {/* Timezone dropdown */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6">
+              <label className="font-press-start text-[9px] text-teal-400 flex-shrink-0">YOUR TIMEZONE:</label>
+              <select
+                value={chatTz}
+                onChange={e => setChatTz(e.target.value)}
+                className="fan-pixel-border rounded bg-black text-white text-xs px-3 py-2 outline-none focus:border-teal-400"
+                style={{ borderColor: 'rgba(45,212,191,0.3)', minWidth: '200px' }}
+              >
+                {TIMEZONES.map(tz => (
+                  <option key={tz.id} value={tz.id}>{tz.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Chatroom list */}
+            <div className="space-y-3">
+              {CHATROOMS.map(room => {
+                const localTime = convertTz(room.utcDay, room.utcHour, chatTz);
+                return (
+                  <div
+                    key={room.id}
+                    className="fan-pixel-border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+                    style={{ borderColor: 'rgba(45,212,191,0.2)', background: 'rgba(0,0,0,0.3)' }}
+                  >
+                    <div className="flex-1">
+                      <p className="font-press-start text-[10px] text-white mb-1">{room.title}</p>
+                      <p className="text-[10px] text-zinc-500">{room.desc}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-press-start text-[9px] text-teal-400">{localTime.day}</p>
+                      <p className="font-press-start text-[10px] text-white">{localTime.time}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="text-center mt-6">
+              <a
+                href="#chatrooms-list"
+                className="fan-arcade-btn inline-flex"
+                style={{ borderColor: '#2dd4bf', color: '#2dd4bf', background: 'rgba(45,212,191,0.06)', fontSize: '9px' }}
+              >
+                <MessageCircle size={14} />
+                CHATROOMS LIST
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div className="arcade-divider max-w-2xl mx-auto mb-12" />
+
+        {/* ── FUN STUFF / MINI STORE ── */}
+        <div className="mb-12">
+          <h3 className="font-press-start text-xs text-center text-zinc-400 tracking-widest mb-6">
+            FUN STUFF YOU MAY WANT TO PURCHASE
+          </h3>
+          <div
+            className="fan-pixel-border rounded-lg p-6 text-center"
+            style={{ borderColor: 'rgba(251,191,36,0.3)', background: 'rgba(251,191,36,0.03)' }}
+          >
+            <ShoppingBag size={28} className="text-amber-400 mx-auto mb-4" />
+            <p className="text-sm text-zinc-400 mb-4">
+              Stickers, merch, and fun extras from the 8PlusMusic universe.
+            </p>
+            <a
+              href="#mini-store"
+              className="fan-arcade-btn inline-flex"
+              style={{ borderColor: '#fbbf24', color: '#fbbf24', background: 'rgba(251,191,36,0.08)', fontSize: '9px' }}
+            >
+              <ShoppingBag size={14} />
+              JOIN THE MINI STORE
+            </a>
+          </div>
+        </div>
+
+        <div className="arcade-divider max-w-2xl mx-auto mb-12" />
         <section className="fan-socials-section mb-12" aria-labelledby="fan-socials-heading">
           <div className="arcade-divider max-w-2xl mx-auto mb-12" />
           <div className="text-center">
