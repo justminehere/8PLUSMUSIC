@@ -17,6 +17,7 @@ import ChartPage from './components/ChartPage';
 import FanPage from './components/FanPage';
 import ArcadeNav from './components/ArcadeNav';
 import ArcadeAtmosphere from './components/ArcadeAtmosphere';
+import ArcadeBackButton from './components/ArcadeBackButton';
 
 function isAdminRoute() {
   return (
@@ -45,6 +46,16 @@ function isChartRoute() {
 function isFanRoute() {
   const p = window.location.pathname.toLowerCase();
   return p === '/fan' || p === '/fans';
+}
+
+function isProfilesRoute() {
+  const p = window.location.pathname.toLowerCase();
+  return p === '/profiles';
+}
+
+function isLiveCreationsRoute() {
+  const p = window.location.pathname.toLowerCase();
+  return p === '/live-creations';
 }
 
 export default function App() {
@@ -99,6 +110,14 @@ export default function App() {
 
   if (isFanRoute()) {
     return <FanPage />;
+  }
+
+  if (isProfilesRoute()) {
+    return <ComingSoonPage title="8+ PROFILES" />;
+  }
+
+  if (isLiveCreationsRoute()) {
+    return <ComingSoonPage title="LIVE CREATIONS" />;
   }
 
   const [dachshundEp1, dachshundEp2, bunny] = EPS;
@@ -162,6 +181,34 @@ export default function App() {
         <Footer />
         <PrivacyBanner onOpenPolicy={() => setPolicyOpen(true)} />
         {policyOpen && <PrivacyPolicy onClose={() => setPolicyOpen(false)} />}
+      </div>
+    </div>
+  );
+}
+
+function ComingSoonPage({ title }: { title: string }) {
+  return (
+    <div className="min-h-screen bg-black relative flex flex-col items-center justify-center px-6">
+      <ArcadeAtmosphere />
+      <div className="relative z-10 flex flex-col items-center gap-8 text-center">
+        <ArcadeBackButton />
+        <h1
+          className="font-press-start text-white arcade-title-main"
+          style={{ fontSize: 'clamp(20px, 5vw, 40px)', letterSpacing: '0.04em' }}
+        >
+          {title}
+        </h1>
+        <p
+          className="font-press-start text-zinc-400"
+          style={{ fontSize: '10px', letterSpacing: '0.06em', lineHeight: 1.8 }}
+        >
+          COMING SOON
+        </p>
+        <div className="flex gap-1.5 mt-4">
+          <span className="arcade-status-dot" style={{ background: '#2dd4bf', width: 8, height: 8, animation: 'dotBlink 1.2s ease-in-out infinite' }} />
+          <span className="arcade-status-dot" style={{ background: '#ec4899', width: 8, height: 8, animation: 'dotBlink 1.8s ease-in-out infinite', animationDelay: '0.3s' }} />
+          <span className="arcade-status-dot" style={{ background: '#2dd4bf', width: 8, height: 8, animation: 'dotBlink 1.5s ease-in-out infinite', animationDelay: '0.6s' }} />
+        </div>
       </div>
     </div>
   );

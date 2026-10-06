@@ -9,8 +9,8 @@ interface NavItem {
 }
 
 // Feature flags — enable when the matching prompt creates the route
-const PROFILES_ENABLED = false;
-const LIVE_CREATIONS_ENABLED = false;
+const PROFILES_ENABLED = true;
+const LIVE_CREATIONS_ENABLED = true;
 
 // Primary nav items (always visible on desktop when enabled)
 const PRIMARY_ITEMS: NavItem[] = [
